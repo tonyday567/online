@@ -1,6 +1,6 @@
 
 <meta charset="utf-8">
-<link rel="stylesheet" href="lhs.css">
+<link rel="stylesheet" href="other/lhs.css">
  
 online
 ===
@@ -215,18 +215,35 @@ quantiles
 
 One problem with a histogram is the necessity of a prior about binning range and size.  An online approach - enforcing a single step through the data starting from scratch - tends to push these two-pass problems to the surface.
 
-A similar statistic is a quantile computation, where bin ranges are allowed to vary, with bin edges converging to quantiles (or percentiles or whatever).
-
-So the deciles [min, 10th, 20th, .. 90th, max] for the ys are:
+A similar statistic is a quantile computation, where bin ranges are allowed to vary, with bin edges converging to quantiles (or percentiles or whatever).  The decay method is to shrink the cuts towards the latest value.
 
 ```include
 other/quantiles.md
 ```
 
 >     toFileMd "other/quantiles.md" $
->         "\n    deciles:" <>
+>         "\n    [min, 10th, 20th, .. 90th, max]:" <>
 >         mconcat (sformat (" " % prec 3) <$> toList
->                  (toList $ _qMarkers $ L.fold (quantiles 11) ys))
+>                  (L.fold (quantiles' 11) ys)) <>
+>         "\n    online [min, 10th, 20th, .. 90th, max] with decay rate = 0.996 (one year)" <>
+>         mconcat (sformat (" " % prec 3) <$> toList
+>                  (L.fold (quantiles 11 identity 0.996) ys))
+
+
+digitize
+---
+
+A related computation is to output the quantile of each value:
+
+
+```include
+other/digitize.md
+```
+
+>     toFileMd "other/digitize.md" $
+>         "\n    first 100 values digitized into quantiles:" <>
+>         mconcat ((sformat (" " % prec 3) <$>)
+>                  (take 100 $ L.scan (digitize 5 identity 0.996) ys))
 
 basic stats fold
 ---
@@ -287,7 +304,7 @@ The base unit for analysis (which I've called ys to abstract) is log(1+return). 
 
 > ys :: [Double]
 > ys = fmap (\x -> log (1+x)) $ ret $ reverse $ unsafeInlineIO $ do
->     bs <- readFile "YAHOO-INDEX_GSPC.csv"
+>     bs <- readFile "other/YAHOO-INDEX_GSPC.csv"
 >     let rawdata =
 >             decode HasHeader (toLazyByteString $ encodeUtf8Builder bs)
 >             :: Either String (Vector YahooRep)

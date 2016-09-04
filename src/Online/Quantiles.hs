@@ -20,8 +20,50 @@ data Quantiles = Quantiles
     -- ^ cumulative frequency (> except for first quantile)
   } deriving (Show, Eq)
 
-quantiles :: Int -> L.Fold Double [Double]
-quantiles n = L.Fold stepP2 (Quantiles n V.empty V.empty) (\(Quantiles _ m _) -> V.toList m)
+-- online quantiles
+quantiles :: Int -> (a -> Double) -> Double -> L.Fold a [Double]
+quantiles n f decay = L.Fold step begin extract
+  where
+    begin = Quantiles n V.empty V.empty
+    extract (Quantiles _ ms _) = V.toList ms
+    step x a =
+        Quantiles
+        s'
+        (V.map (\x' -> decay*x'+(1-decay)*f a) m')
+        (V.map (\x' -> decay*x') c')
+      where
+        (Quantiles s' m' c') = stepP2 x (f a)
+
+quantiles'' :: Int -> (a -> Double) -> Double -> L.Fold a Quantiles
+quantiles'' n f decay = L.Fold step begin id
+  where
+    begin = Quantiles n V.empty V.empty
+    step x a =
+        Quantiles
+        s'
+        (V.map (\x' -> decay*x'+(1-decay)*f a) m')
+        (V.map (\x' -> decay*x') c')
+      where
+        (Quantiles s' m' c') = stepP2 x (f a)
+
+
+quantiles' :: Int -> L.Fold Double [Double]
+quantiles' n = L.Fold stepP2 (Quantiles n V.empty V.empty) (\(Quantiles _ m _) -> V.toList m)
+
+-- the quantile of the final value of the foldable
+digitize :: Int -> (a -> Double) -> Double -> L.Fold a Integer
+digitize n f decay = L.Fold step begin extract
+  where
+    begin = (Quantiles n V.empty V.empty, (-1/0))
+    extract (qs, a) = bucket qs a
+    step (x, _) a =
+        (Quantiles
+        s'
+        (V.map (\x' -> decay*x'+(1-decay)*f a) m')
+        (V.map (\x' -> decay*x') c')
+        , f a)
+      where
+        (Quantiles s' m' c') = stepP2 x (f a)
 
 max :: Quantiles -> Double
 max (Quantiles s m _) = m V.! (s-1)
@@ -69,6 +111,14 @@ addNewData (Quantiles b ms qs) a
       ms
       (V.imap (\i q -> if ms!i > a then q+1 else q) qs)
 
+-- bucket of the value
+bucket :: Quantiles -> Double -> Integer
+bucket (Quantiles _ ms _) a
+    | V.length ms == 0 = 0
+    | a < ms!0 = 0
+    | a > V.last ms = fromIntegral $ length ms - 1
+    | otherwise = L.fold L.sum [if ms!x > a then 0 else 1 | x <- [0..(length ms - 1)-1]]
+
 p2 :: Vector Double -> Vector Double -> Vector Double -> Vector Double
 p2 q n d = res
   where
@@ -94,26 +144,4 @@ l2 q n d =
     ndelta  = V.zipWith (-) (V.tail n) n
     qdelta  = V.zipWith (-) (V.tail q) q
 
-onlineQuantiles :: Int -> (a -> Double) -> Double -> L.Fold a [Double]
-onlineQuantiles n f decay = L.Fold step begin extract
-  where
-    begin = Quantiles n V.empty V.empty
-    extract (Quantiles _ m _) = V.toList m
-    step x a = Quantiles s' (V.map (\x' -> decay*x'+(1-decay)*f a) m') c'
-      where
-        (Quantiles s' m' c') = stepP2 x (f a)
-
-
-online' :: Int -> (a -> Double) -> Double -> L.Fold a [Double]
-online' n f decay = L.Fold step begin extract
-  where
-    begin = Quantiles n V.empty V.empty
-    extract (Quantiles _ m _) = V.toList m
-    step x a =
-        Quantiles
-        s'
-        (V.map (\x' -> decay*x'+(1-decay)*f a) m')
-        (V.map (\x' -> decay*x') c')
-      where
-        (Quantiles s' m' c') = stepP2 x (f a)
 
