@@ -311,6 +311,6 @@ other/digitize.md
 >         mconcat ((sformat (" " % prec 3) <$>)
 >                  (take 100 $ L.scan (digitize 5 identity 0.996) ys))
 >
->     fileSvg "other/scratchpad.svg" (400,400) $ linesXY def
+>     filePng "other/scratchpad.png" (400,400) $ linesXY def
 >         [zip [0..] (L.scan L.sum ys), zip [0..] ((2*)<$>(L.scan L.sum ys))]
 

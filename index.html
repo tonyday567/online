@@ -203,5 +203,5 @@ online [min, 10th, 20th, .. 90th, max] with decay rate = 0.996 (one year) -0.033
         mconcat ((sformat (<span class="st">&quot; &quot;</span> <span class="fu">%</span> prec <span class="dv">3</span>) <span class="fu">&lt;$&gt;</span>)
                  (take <span class="dv">100</span> <span class="fu">$</span> L.scan (digitize <span class="dv">5</span> identity <span class="fl">0.996</span>) ys))
 
-    fileSvg <span class="st">&quot;other/scratchpad.svg&quot;</span> (<span class="dv">400</span>,<span class="dv">400</span>) <span class="fu">$</span> linesXY def
+    filePng <span class="st">&quot;other/scratchpad.png&quot;</span> (<span class="dv">400</span>,<span class="dv">400</span>) <span class="fu">$</span> linesXY def
         [zip [<span class="dv">0</span><span class="fu">..</span>] (L.scan L.sum ys), zip [<span class="dv">0</span><span class="fu">..</span>] ((<span class="dv">2</span><span class="fu">*</span>)<span class="fu">&lt;$&gt;</span>(L.scan L.sum ys))]</code></pre></div>
