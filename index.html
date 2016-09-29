@@ -4,17 +4,13 @@
 <p><a href="https://travis-ci.org/tonyday567/online"><img src="https://travis-ci.org/tonyday567/online.png" alt="Build Status" /></a></p>
 <h2 id="scratchpad">scratchpad</h2>
 <div class="figure">
-<img src="other/scratchpad.svg" />
+<img src="other/scratchpad.png" />
 
 </div>
-<p><code>toFileSvg &quot;other/scratchpad.svg&quot; (400,400) $ linesXY def [ys, (2*)&lt;$&gt;ys]</code></p>
+<p><code>toFilePng &quot;other/scratchpad.png&quot; (400,400) $ linesXY def [ys, (2*)&lt;$&gt;ys]</code></p>
 <h2 id="workflow">workflow</h2>
-<p>Who needs ipython when you have pandoc.</p>
-<pre><code>stack install &amp;&amp; readme &amp;&amp; pandoc -f markdown+lhs -t html -i readme.lhs -o readme.html --filter pandoc-include</code></pre>
-<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="ot">{-# LANGUAGE NoImplicitPrelude #-}</span>
-<span class="ot">{-# LANGUAGE OverloadedStrings #-}</span>
-<span class="ot">{-# LANGUAGE DeriveGeneric #-}</span>
-<span class="kw">import </span><span class="dt">Protolude</span> <span class="kw">hiding</span> ((%))
+<pre><code>stack install &amp;&amp; readme &amp;&amp; pandoc -f markdown+lhs -t html -i readme.lhs -o index.html --filter pandoc-include</code></pre>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Protolude</span> <span class="kw">hiding</span> ((%))
 <span class="kw">import </span><span class="dt">Control.Monad.Primitive</span> (unsafeInlineIO)</code></pre></div>
 <h2 id="online-library">online library</h2>
 <div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Online</span>
@@ -94,8 +90,8 @@ corr r = (\cov&#39; stdx stdy -&gt; cov&#39; / (stdx * stdy)) &lt;$&gt; cov r &l
 <span class="kw">import </span><span class="dt">Data.Vector</span> (<span class="dt">Vector</span>)</code></pre></div>
 <h2 id="pretty-printing">pretty printing</h2>
 <div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Formatting</span></code></pre></div>
-<h2 id="chart-svg">chart-svg</h2>
-<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Chart</span></code></pre></div>
+<h2 id="chart-unit">chart-unit</h2>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Chart.Unit</span></code></pre></div>
 <h2 id="data-munge">data munge</h2>
 <p>data is from <a href="https://www.quandl.com/data/YAHOO/INDEX_GSPC-S-P-500-Index">yahoo</a> and consists of the following fields:</p>
 <pre><code>Date,Open,High,Low,Close,Volume,Adjusted Close</code></pre>
@@ -168,10 +164,10 @@ main <span class="fu">=</span> <span class="kw">do</span></code></pre></div>
 <img src="other/moments.svg" />
 
 </div>
-<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell">    <span class="kw">let</span> state <span class="fu">=</span> drop <span class="dv">1</span> <span class="fu">$</span> L.scan ((,) <span class="fu">&lt;$&gt;</span> (ma <span class="fl">0.9</span>) <span class="fu">&lt;*&gt;</span> (std <span class="fl">0.99</span>)) ys
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell">    <span class="kw">let</span> st <span class="fu">=</span> drop <span class="dv">1</span> <span class="fu">$</span> L.scan ((,) <span class="fu">&lt;$&gt;</span> (ma <span class="fl">0.9</span>) <span class="fu">&lt;*&gt;</span> (std <span class="fl">0.99</span>)) ys
     fileSvg <span class="st">&quot;other/moments.svg&quot;</span> (<span class="dv">300</span>,<span class="dv">300</span>) <span class="fu">$</span> (linesXY def <span class="fu">$</span>
-        [ zip [<span class="dv">0</span><span class="fu">..</span>] (fst <span class="fu">&lt;$&gt;</span> state)
-        , zip [<span class="dv">0</span><span class="fu">..</span>] (snd <span class="fu">&lt;$&gt;</span> state)
+        [ zip [<span class="dv">0</span><span class="fu">..</span>] (fst <span class="fu">&lt;$&gt;</span> st)
+        , zip [<span class="dv">0</span><span class="fu">..</span>] (snd <span class="fu">&lt;$&gt;</span> st)
         ])</code></pre></div>
 <h2 id="histogram">histogram</h2>
 <p>A histogram of all elements, outliers truncated.</p>

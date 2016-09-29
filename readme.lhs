@@ -18,7 +18,7 @@ scratchpad
 workflow
 ---
 
-    stack install && readme && pandoc -f markdown+lhs -t html -i readme.lhs -o readme.html --filter pandoc-include
+    stack install && readme && pandoc -f markdown+lhs -t html -i readme.lhs -o index.html --filter pandoc-include
 
 > import Protolude hiding ((%))
 > import Control.Monad.Primitive (unsafeInlineIO)
@@ -159,10 +159,10 @@ pretty printing
 
 > import Formatting
 
-chart-svg
+chart-unit
 ---
 
-> import Chart
+> import Chart.Unit
 
 data munge
 ---
@@ -254,10 +254,10 @@ online mean and std at a 0.99 decay rate:
 
 ![](other/moments.svg)
 
->     let state = drop 1 $ L.scan ((,) <$> (ma 0.9) <*> (std 0.99)) ys
+>     let st = drop 1 $ L.scan ((,) <$> (ma 0.9) <*> (std 0.99)) ys
 >     fileSvg "other/moments.svg" (300,300) $ (linesXY def $
->         [ zip [0..] (fst <$> state)
->         , zip [0..] (snd <$> state)
+>         [ zip [0..] (fst <$> st)
+>         , zip [0..] (snd <$> st)
 >         ])
 
 histogram
