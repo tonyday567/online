@@ -9,7 +9,7 @@ packages:
 - '.'
 - location:
     git: https://github.com/tonyday567/chart-unit
-    commit: 6235968a1c448a913528b03c7d3d94940bbf80bc
+    commit: be5fc8c8f701e079c58ebbb86aa966d11f5f4b55
   extra-dep: true
 
 # Packages to be pulled from upstream that are not in the resolver (e.g., acme-missiles-0.3)
