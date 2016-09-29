@@ -1,22 +1,13 @@
 <p><meta charset="utf-8"> <link rel="stylesheet" href="other/lhs.css"></p>
-<h1 id="online">online</h1>
+<h1 id="online-build-status"><a href="https://tonyday567.github.io/readme-lhs/index.html">online</a> <a href="https://travis-ci.org/tonyday567/online"><img src="https://travis-ci.org/tonyday567/online.png" alt="Build Status" /></a></h1>
 <p>Exploring the design space of online algorithms, charting, statistics and haskell.</p>
-<p><a href="https://travis-ci.org/tonyday567/online"><img src="https://travis-ci.org/tonyday567/online.png" alt="Build Status" /></a></p>
-<h2 id="scratchpad">scratchpad</h2>
-<div class="figure">
-<img src="other/scratchpad.png" />
-
-</div>
-<p><code>toFilePng &quot;other/scratchpad.png&quot; (400,400) $ linesXY def [ys, (2*)&lt;$&gt;ys]</code></p>
-<h2 id="workflow">workflow</h2>
-<pre><code>stack install &amp;&amp; readme &amp;&amp; pandoc -f markdown+lhs -t html -i readme.lhs -o index.html --filter pandoc-include</code></pre>
 <div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Protolude</span> <span class="kw">hiding</span> ((%))
 <span class="kw">import </span><span class="dt">Control.Monad.Primitive</span> (unsafeInlineIO)</code></pre></div>
 <h2 id="online-library">online library</h2>
 <div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Online</span>
 <span class="kw">import qualified</span> <span class="dt">Control.Foldl</span> <span class="kw">as</span> <span class="dt">L</span></code></pre></div>
 <p>tl;dr</p>
-<p>online turns a statistic (a summary or fold of the data) into an online algorithm.</p>
+<p>online turns a statistic (a summary or fold of data) into an online algorithm.</p>
 <h2 id="motivation-a-simple-moving-average">motivation: a simple moving average</h2>
 <p>To start somewhere, let's deconstruct the calculation of a simple moving average. Here's an average:</p>
 <pre><code>av xs = (sum xs/length xs)
@@ -43,7 +34,7 @@
 <li>very old values are almost forgotten ie not be influencing the current moving average much at all, compared with the simple moving average where past values go from having no effect to a lot at an arbitrary point in the history.</li>
 <li>newer values should hold more weight than older ones; weights are monotonicaly decreasing from latest to oldest value.</li>
 </ul>
-<h2 id="online-1">online</h2>
+<h2 id="online">online</h2>
 <p><code>online</code> reifies this pattern into the foldl library api:</p>
 <pre><code>av xs = L.fold (online id (*0.9)) xs
 -- av [0..10] == 6.030559401413827
@@ -205,3 +196,5 @@ online [min, 10th, 20th, .. 90th, max] with decay rate = 0.996 (one year) -0.033
 
     filePng <span class="st">&quot;other/scratchpad.png&quot;</span> (<span class="dv">400</span>,<span class="dv">400</span>) <span class="fu">$</span> linesXY def
         [zip [<span class="dv">0</span><span class="fu">..</span>] (L.scan L.sum ys), zip [<span class="dv">0</span><span class="fu">..</span>] ((<span class="dv">2</span><span class="fu">*</span>)<span class="fu">&lt;$&gt;</span>(L.scan L.sum ys))]</code></pre></div>
+<h2 id="workflow">workflow</h2>
+<pre><code>stack install &amp;&amp; readme &amp;&amp; pandoc -f markdown+lhs -t html -i readme.lhs -o index.html --filter pandoc-include</code></pre>

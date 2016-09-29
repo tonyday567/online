@@ -1,24 +1,10 @@
 <meta charset="utf-8">
 <link rel="stylesheet" href="other/lhs.css">
 
-online
+[online](https://tonyday567.github.io/readme-lhs/index.html) [![Build Status](https://travis-ci.org/tonyday567/online.png)](https://travis-ci.org/tonyday567/online)
 ===
 
 Exploring the design space of online algorithms, charting, statistics and haskell.
-
-[![Build Status](https://travis-ci.org/tonyday567/online.png)](https://travis-ci.org/tonyday567/online)
-
-scratchpad
----
-
-![](other/scratchpad.png)
-
-`toFilePng "other/scratchpad.png" (400,400) $ linesXY def [ys, (2*)<$>ys]`
-
-workflow
----
-
-    stack install && readme && pandoc -f markdown+lhs -t html -i readme.lhs -o index.html --filter pandoc-include
 
 > import Protolude hiding ((%))
 > import Control.Monad.Primitive (unsafeInlineIO)
@@ -31,7 +17,7 @@ online library
 
 tl;dr
 
-online turns a statistic (a summary or fold of the data) into an online algorithm.
+online turns a statistic (a summary or fold of data) into an online algorithm.
 
 motivation: a simple moving average
 ---
@@ -313,4 +299,9 @@ other/digitize.md
 >
 >     filePng "other/scratchpad.png" (400,400) $ linesXY def
 >         [zip [0..] (L.scan L.sum ys), zip [0..] ((2*)<$>(L.scan L.sum ys))]
+
+workflow
+---
+
+    stack install && readme && pandoc -f markdown+lhs -t html -i readme.lhs -o index.html --filter pandoc-include
 
