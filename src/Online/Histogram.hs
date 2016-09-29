@@ -76,7 +76,7 @@ hist cuts r =
        Histogram cuts
        (Map.unionWith (+)
         (Map.map (*r) counts)
-        (Map.singleton (L.fold countBool (fmap (a>) cuts)) (1-1/r))))
+        (Map.singleton (L.fold countBool (fmap (a>) cuts)) (1-(1/r)))))
     (Histogram cuts mempty)
     identity
 

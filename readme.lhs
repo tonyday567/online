@@ -11,20 +11,15 @@ Exploring the design space of online algorithms, charting, statistics and haskel
 scratchpad
 ---
 
-![](other/scratchpad.svg)
+![](other/scratchpad.png)
 
-`toFileChart "other/scratchpad.svg" (400,400) $ linesXY def [ys, (2*)<$>ys]`
+`toFilePng "other/scratchpad.png" (400,400) $ linesXY def [ys, (2*)<$>ys]`
 
 workflow
 ---
 
-Who needs ipython when you have pandoc.
-
     stack install && readme && pandoc -f markdown+lhs -t html -i readme.lhs -o readme.html --filter pandoc-include
 
-> {-# LANGUAGE NoImplicitPrelude #-}
-> {-# LANGUAGE OverloadedStrings #-}
-> {-# LANGUAGE DeriveGeneric #-}
 > import Protolude hiding ((%))
 > import Control.Monad.Primitive (unsafeInlineIO)
 
@@ -154,7 +149,7 @@ csv data arrives as a bytestring, gets decoded as a Vector, and decoding errors 
 
 > import Data.Csv
 > import GHC.Base (String)
-> import Data.Text (pack, unpack)
+> import Data.Text (pack)
 > import Data.Text.Encoding (encodeUtf8Builder)
 > import Data.ByteString.Builder (toLazyByteString)
 > import Data.Vector (Vector)
@@ -178,15 +173,14 @@ data is from [yahoo](https://www.quandl.com/data/YAHOO/INDEX_GSPC-S-P-500-Index)
 
 Stats are soley on adjusted close.
 
-
 > data YahooRep = YahooRep
 >   { date :: ByteString
 >   , open :: ByteString
 >   , high :: ByteString
 >   , low :: ByteString
->   , close :: !ByteString
+>   , close :: ByteString
 >   , volume :: ByteString
->   , adjustedClose :: Double
+>   , adjustedClose :: !Double
 >   } deriving Generic
 >
 > instance FromRecord YahooRep
@@ -213,21 +207,6 @@ The base unit for analysis (which I've called ys to abstract) is log(1+return). 
 >             Nothing -> ([], Just a)
 >             Just a' -> ((a-a')/a':fst x, Just a)
 
-markdown and chart combinators
----
-
-> size :: (Double,Double)
-> size = (400,400)
->
-> toFileChart :: Text -> (Double,Double) -> ChartSvg Double -> IO ()
-> toFileChart fileName shape chart =
->     toFile (unpack fileName) shape chart
->
->
-> toFileMd :: FilePath -> Text -> IO ()
-> toFileMd = writeFile
->
-
 main
 ---
 
@@ -252,12 +231,12 @@ The first 2k ys:
 
 ![](other/elems.svg)
 
->     toFileChart "other/elems.svg" size
+>     fileSvg "other/elems.svg" (300,300)
 >         (barRange
 >          (barChart . chartAxes . element 0 . axisTickStyle .~ TickNone $ def)
 >          (zip [0..] (take 2000 ys)))
->     toFileChart
->         "other/asum.svg" size
+>     fileSvg
+>         "other/asum.svg" (300,300)
 >         (lineXY
 >          (lineChart . chartAxes .~
 >           fmap (axisTickStyle .~ TickNone)
@@ -276,7 +255,7 @@ online mean and std at a 0.99 decay rate:
 ![](other/moments.svg)
 
 >     let state = drop 1 $ L.scan ((,) <$> (ma 0.9) <*> (std 0.99)) ys
->     toFileChart "other/moments.svg" size $ (linesXY def $
+>     fileSvg "other/moments.svg" (300,300) $ (linesXY def $
 >         [ zip [0..] (fst <$> state)
 >         , zip [0..] (snd <$> state)
 >         ])
@@ -289,11 +268,11 @@ A histogram of all elements, outliers truncated.
 ![](other/hist.svg)
 
 >     let h = toXY $ fill (rangeCuts 100 (-0.02) 0.02) ys
->     toFileChart "other/hist.svg" size $
+>     fileSvg "other/hist.svg" (300,300) $
 >       barRange
 >       (barChart . chartAxes .~
 >        [axisTickStyle .~ TickLabels
->         (formatToString (prec 2) <$> rangeCuts 4 (-0.02) 0.02)
+>         (sformat (prec 2) <$> rangeCuts 4 (-0.02) 0.02)
 >         $ def] $ def)
 >       h
 
@@ -309,7 +288,7 @@ A similar statistic is a quantile computation, where bin ranges are allowed to v
 other/quantiles.md
 ```
 
->     toFileMd "other/quantiles.md" $
+>     writeFile "other/quantiles.md" $
 >         "\n    [min, 10th, 20th, .. 90th, max]:" <>
 >         mconcat (sformat (" " % prec 3) <$> toList
 >                  (L.fold (quantiles' 11) ys)) <>
@@ -327,11 +306,11 @@ A related computation is to output the quantile of each value:
 other/digitize.md
 ```
 
->     toFileMd "other/digitize.md" $
+>     writeFile "other/digitize.md" $
 >         "\n    first 100 values digitized into quantiles:" <>
 >         mconcat ((sformat (" " % prec 3) <$>)
 >                  (take 100 $ L.scan (digitize 5 identity 0.996) ys))
 >
->     toFileChart "other/scratchpad.svg" (400,400) $ linesXY def
+>     fileSvg "other/scratchpad.svg" (400,400) $ linesXY def
 >         [zip [0..] (L.scan L.sum ys), zip [0..] ((2*)<$>(L.scan L.sum ys))]
 

@@ -5,11 +5,11 @@
 
 module Online.Quantiles where
 
+import Protolude
 import qualified Control.Foldl as L
 import qualified Data.Vector as V
 import Data.Vector ((!),Vector)
 import Control.Lens
-import Data.List
 
 data Quantiles = Quantiles
   { _qSize    :: Int
@@ -35,7 +35,7 @@ quantiles n f decay = L.Fold step begin extract
         (Quantiles s' m' c') = stepP2 x (f a)
 
 quantiles'' :: Int -> (a -> Double) -> Double -> L.Fold a Quantiles
-quantiles'' n f decay = L.Fold step begin id
+quantiles'' n f decay = L.Fold step begin identity
   where
     begin = Quantiles n V.empty V.empty
     step x a =
@@ -66,7 +66,7 @@ digitize n f decay = L.Fold step begin extract
         (Quantiles s' m' c') = stepP2 x (f a)
 
 max :: Quantiles -> Double
-max (Quantiles s m _) = m V.! (s-1)
+max (Quantiles s m _) = m V.! (s - 1)
 
 min :: Quantiles -> Double
 min (Quantiles _ m _) = m V.! 0
@@ -80,20 +80,20 @@ stepP2 (Quantiles b ms cs) a
   | otherwise =
   let
     (Quantiles _ ms'' cs'') = addNewData (Quantiles b ms cs) a
-    csIdeal = V.generate b (\i -> 1 + ((V.last cs'')-1) * fromIntegral i/(fromIntegral b-1)) :: Vector Double
+    csIdeal = V.generate b (\i -> 1 + ((V.last cs'') - 1) * fromIntegral i/(fromIntegral b - 1)) :: Vector Double
     d = V.zipWith (-) csIdeal cs''
     dsign = V.map signum d
     c' = V.zipWith (-) (V.tail cs'') (V.init cs'')
     isOut = V.zipWith3 (\d' nd1 nd0 -> d' >= 1 && nd1 > 1  || d' <= -1 && nd0 > 1) (V.init $ V.tail d) (V.tail c') c'
     p2' = p2 ms'' (cs'') dsign
     l2' = l2 ms'' (cs'') dsign
-    ms24 = V.take (b-2) $ V.tail ms''
+    ms24 = V.take (b - 2) $ V.tail ms''
     okP2 = V.zipWith3 (\x x0 x1 -> x > x0 && x < x1) p2' ms'' (V.drop 2 ms'')
     ms24' = V.zipWith3 (\x y z-> if x then y else z) okP2 p2' l2'
     ms24'' = V.zipWith3 (\x y z-> if x then y else z) isOut ms24' ms24
-    ms''' = V.take 1 ms'' V.++ ms24'' V.++ V.drop (b-1) ms''
+    ms''' = V.take 1 ms'' V.++ ms24'' V.++ V.drop (b - 1) ms''
     cs24 = V.zipWith3 (\x y z-> if x then y+z else y) isOut (V.init $ V.tail cs'') (V.map (fromIntegral . fromEnum) $ V.init $ V.tail dsign)
-    cs''' = V.take 1 cs'' V.++ cs24 V.++ V.drop (b-1) cs''
+    cs''' = V.take 1 cs'' V.++ cs24 V.++ V.drop (b - 1) cs''
   in
    Quantiles b ms''' cs'''
 
@@ -105,7 +105,7 @@ addNewData (Quantiles b ms qs) a
     | a > V.last ms =
       Quantiles b
       (snoc (V.init ms) a)
-      (qs V.// [(b-1, 1 + qs!(b-1))])
+      (qs V.// [(b - 1, 1 + qs!(b - 1))])
     | otherwise =
       Quantiles b
       ms
@@ -117,7 +117,7 @@ bucket (Quantiles _ ms _) a
     | V.length ms == 0 = 0
     | a < ms!0 = 0
     | a > V.last ms = fromIntegral $ length ms - 1
-    | otherwise = L.fold L.sum [if ms!x > a then 0 else 1 | x <- [0..(length ms - 1)-1]]
+    | otherwise = L.fold L.sum [if ms!x > a then 0 else 1 | x <- [0..(length ms - 1) - 1]]
 
 p2 :: Vector Double -> Vector Double -> Vector Double -> Vector Double
 p2 q n d = res

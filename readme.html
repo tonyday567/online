@@ -2,38 +2,57 @@
 <h1 id="online">online</h1>
 <p>Exploring the design space of online algorithms, charting, statistics and haskell.</p>
 <p><a href="https://travis-ci.org/tonyday567/online"><img src="https://travis-ci.org/tonyday567/online.png" alt="Build Status" /></a></p>
-<p>Machine learning in haskell is a . With python, you are taken to a data nerd's wonderland of neat api's and gold-plated avenues of process and analysis. Haskell takes you straight to about here:</p>
+<h2 id="scratchpad">scratchpad</h2>
+<div class="figure">
+<img src="other/scratchpad.svg" />
+
+</div>
+<p><code>toFileSvg &quot;other/scratchpad.svg&quot; (400,400) $ linesXY def [ys, (2*)&lt;$&gt;ys]</code></p>
+<h2 id="workflow">workflow</h2>
+<p>Who needs ipython when you have pandoc.</p>
+<pre><code>stack install &amp;&amp; readme &amp;&amp; pandoc -f markdown+lhs -t html -i readme.lhs -o readme.html --filter pandoc-include</code></pre>
 <div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="ot">{-# LANGUAGE NoImplicitPrelude #-}</span>
 <span class="ot">{-# LANGUAGE OverloadedStrings #-}</span>
 <span class="ot">{-# LANGUAGE DeriveGeneric #-}</span>
 <span class="kw">import </span><span class="dt">Protolude</span> <span class="kw">hiding</span> ((%))
 <span class="kw">import </span><span class="dt">Control.Monad.Primitive</span> (unsafeInlineIO)</code></pre></div>
 <h2 id="online-library">online library</h2>
-<p>online is my term for turning a statistic into an incremental update of current state.</p>
-<p>If we start with the concept of an average:</p>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Online</span>
+<span class="kw">import qualified</span> <span class="dt">Control.Foldl</span> <span class="kw">as</span> <span class="dt">L</span></code></pre></div>
+<p>tl;dr</p>
+<p>online turns a statistic (a summary or fold of the data) into an online algorithm.</p>
+<h2 id="motivation-a-simple-moving-average">motivation: a simple moving average</h2>
+<p>To start somewhere, let's deconstruct the calculation of a simple moving average. Here's an average:</p>
 <pre><code>av xs = (sum xs/length xs)
 -- av [0..10] == 5.0</code></pre>
-<p>As we traverse a sequence (has an ordering from first to last, often associated with a dimension like time), a local version of average is a useful state to describe for upstream processing. What has been the average recently. A moving average weights the elements seen so far within a window. A moving average of the last three elements, when 6 have been seen looks like:</p>
-<pre><code>0 0 0 1 1 1 _</code></pre>
-<p>In the next step, the weights now look like:</p>
+<p>Imagine that there is a data stream, arriving in an sequence (an ordering from first to last). As the data values arrive, a state variable is updated which is the moving average of the last 3 values (ma3). To calculate ma3, the values so far would be multiplied by the following weights, summed, and divided by 3.</p>
+<p>When 6 values have been consumed so far, the ma3 is:</p>
+<pre><code>sum(xs * [0 0 0 1 1 1])/3</code></pre>
+<p>The next value streams in, and the ma3 calculation weights now looks like this:</p>
 <pre><code>0 0 0 0 1 1 1</code></pre>
-<p>This incremental update for a new data point - how has the recent moving average changed - looks like this:</p>
-<pre><code>0 0 0 -1 0 0 1</code></pre>
-<p>An interpretation is that the the ma <code>learns</code> the newest and <code>forgets</code> the value at <code>t-3</code>.</p>
-<p>But there are other weighting schemes. The baseline narrative of a moving average update - what have the values averaged lately - tends towards selecting a weighting scheme where:</p>
+<p>The difference between these weights and the previous weights is:</p>
+<pre><code>w = [0 0 0 -1 0 0 1]</code></pre>
+<p>So that the ma3 can be calculated as <span class="math inline"><em>m</em><em>a</em>3<sub><em>t</em></sub> = <em>m</em><em>a</em>3<sub><em>t</em> − 1</sub> + ∑(<em>w</em> * <em>x</em><em>s</em>)/3</span></p>
+<h2 id="a-better-moving-average">a better moving average</h2>
+<p>There are other weighting schemes, and a better one than the simple moving average is the exponential moving average, where the weights look like this:</p>
+<pre><code>0.1 * [... (0.9^2) (0.9^1) (0.9^0) _]
+
+0.1 * [... (0.9^3) (0.9^2) (0.9^1) 1]</code></pre>
+<p>So that the difference is:</p>
+<pre><code>0.1 * [... (-0.1 * 0.9^2) (-0.1 * 0.9^1) (-0.1 * 0.9^0) 1]</code></pre>
+<p>And, as it happens, <span class="math inline"><em>e</em><em>m</em><em>a</em><sub><em>t</em></sub> = 0.9 * <em>e</em><em>m</em><em>a</em><sub><em>t</em> − 1</sub> + 0.1 * <em>x</em><sub><em>t</em></sub></span></p>
+<p>This state variable (or statistic) is quite compact (one state variable being the current ma) compared with the simple moving average where the last n values need to be remembered in order to drop the nth oldest each update. This also makes it blaxingly fast compared to the simple average update.</p>
+<p>More generally, the baseline narrative of an online moving average - what have the values averaged lately - tends towards preferring the exponential version as:</p>
 <ul class="incremental">
-<li>very old values are almost forgotten ie not be influencing the current moving average much at all.</li>
+<li>very old values are almost forgotten ie not be influencing the current moving average much at all, compared with the simple moving average where past values go from having no effect to a lot at an arbitrary point in the history.</li>
 <li>newer values should hold more weight than older ones; weights are monotonicaly decreasing from latest to oldest value.</li>
 </ul>
-<p>One solution is to arrange the weights of the incremental update like:</p>
-<pre><code>[... (-0.1 * 0.9^2) (-0.1 * 0.9^1) (-0.1) 1]</code></pre>
-<p>And, taking the difference between the moving average before and after an update step gives this computation:</p>
-<pre><code>\(summer, counter) a -&gt; (summer * 0.9 + a, counter * 0.9 + 1)</code></pre>
-<p><code>online</code> reifies this pattern into the foldl library api.</p>
-<pre><code>av xs = L.fold (online identity (*0.9)) xs
+<h2 id="online-1">online</h2>
+<p><code>online</code> reifies this pattern into the foldl library api:</p>
+<pre><code>av xs = L.fold (online id (*0.9)) xs
 -- av [0..10] == 6.030559401413827
 -- av [0..100] == 91.00241448887785</code></pre>
-<p>This provides a moving average narrative that provides an intuitive representation of how big recent numbers have been at the end of a [0..100] data stream: 91ish rather than 50 when comparing the lifetime average.</p>
+<p>And provides an intuitive representation of how big recent numbers have been at the end of a [0..100] data stream: 91ish rather than 50 when comparing the lifetime average.</p>
 <p>online exposes:</p>
 <ul class="incremental">
 <li>a decay function governing the rate at which the statistic decays.</li>
@@ -42,7 +61,7 @@
 <h2 id="decay">decay</h2>
 <p>The decay function <code>(*r)</code> can be widely interpreted:</p>
 <ul class="incremental">
-<li>a decay function equal to identity provides lifetime statistical calculations ie no forgetting.</li>
+<li>a decay function equal to <code>id</code> provides lifetime statistical calculations ie no forgetting.</li>
 <li>a decay function of <code>const 0</code> (or <code>(*0)</code>) provides the latest value ie always forget.</li>
 <li>in physical systems, an exponential-weighted moving average where the center-of-mass is x would be isomorphic to a decay function of (*(1-1/x)).</li>
 <li>where the data represents time series, the center-of-mass is often referred to as duration. The duration of (*0.99) is 100.</li>
@@ -51,176 +70,32 @@
 <h2 id="stat">stat</h2>
 <p>stat is a premap function that is the statistic of interest:</p>
 <pre><code>av = online id id</code></pre>
-<p>is a classical average over the whole sample. A decay rate of zero means no forgetting.</p>
+<p>is a classical average over the whole sample with no forgetting.</p>
+<pre><code>ma x = online id (*0.9)</code></pre>
+<p>is a moving average with a decay rate of 0.9.</p>
 <pre><code>sqav = online (*2) id</code></pre>
-<p>is a lifetime squared average. And this:</p>
+<p>is a lifetime squared average.</p>
+<p>foldl Fold's are applicative functors, so:</p>
 <pre><code>std = (\s ss -&gt; sqrt (ss - s**2)) &lt;$&gt; av &lt;*&gt; sqav</code></pre>
 <p>is the standard deviation.</p>
-<p>We get applicative syntax via the foldl library.</p>
-<p>This:</p>
-<pre><code>ma x = online identity (*x)</code></pre>
-<p>is then an exponentially-weighted moving average, with a decay rate of 0.9 per step.</p>
-<pre><code>std x x&#39; = (\s ss -&gt; sqrt (ss - s**2)) &lt;$&gt; online id (*x) &lt;*&gt; online (*2) (*x&#39;)</code></pre>
-<p>Very similar to the boiler-plate grade school version of standard deviation, but here the mean is conditional; itself a weighted average calculation, and with potentially a different decay function.</p>
-<p>A correlation fold of a tuple is quite intuitive:</p>
+<p>An exponentially-weighted moving average is then:</p>
+<pre><code>estd x x&#39; = (\s ss -&gt; sqrt (ss - s**2)) &lt;$&gt; online id (*x) &lt;*&gt; online (*2) (*x&#39;)</code></pre>
+<p>Note that, unlike the usual calc, the mean is conditional; itself a weighted average calculation, and with potentially a different decay function.</p>
+<p>Just about any statistic can be made online. Here's an online, tuple correlation stat:</p>
 <pre><code>cov r = (\xy xbar ybar -&gt; xy - xbar * ybar) &lt;$&gt; online (uncurry (*)) r &lt;*&gt; online fst r &lt;*&gt; online snd r
 corr r = (\cov&#39; stdx stdy -&gt; cov&#39; / (stdx * stdy)) &lt;$&gt; cov r &lt;*&gt; L.premap fst (std r) &lt;*&gt; L.premap snd (std r)</code></pre>
-<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Online</span>
-<span class="kw">import qualified</span> <span class="dt">Control.Foldl</span> <span class="kw">as</span> <span class="dt">L</span></code></pre></div>
 <h2 id="cassava">cassava</h2>
 <p>csv data arrives as a bytestring, gets decoded as a Vector, and decoding errors arrive as strings, so there's a fair bit of messiness working with Text Lists.</p>
 <div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Data.Csv</span>
 <span class="kw">import </span><span class="dt">GHC.Base</span> (<span class="dt">String</span>)
-<span class="kw">import </span><span class="dt">Data.Text</span> (pack, unpack)
+<span class="kw">import </span><span class="dt">Data.Text</span> (pack)
 <span class="kw">import </span><span class="dt">Data.Text.Encoding</span> (encodeUtf8Builder)
 <span class="kw">import </span><span class="dt">Data.ByteString.Builder</span> (toLazyByteString)
 <span class="kw">import </span><span class="dt">Data.Vector</span> (<span class="dt">Vector</span>)</code></pre></div>
 <h2 id="pretty-printing">pretty printing</h2>
-<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Formatting</span>
-<span class="kw">import </span><span class="dt">Chart</span></code></pre></div>
-<h2 id="main">main</h2>
-<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="ot">main ::</span> <span class="dt">IO</span> ()
-main <span class="fu">=</span> <span class="kw">do</span></code></pre></div>
-<p>The test data is the daily S&amp;P500 price index.</p>
-<p>Time and money both tend towards being geometric, so a natural transformation is to look at the differences in log price as the main unit of analysis. This is also the log(1+return).</p>
-<p>To abstract a bit, I'm going to name them ys. The xs in the data is time, but I'm choosing to forget this data piece and just retain the ordering information. So xs can be thought of as [0..] in most cases.</p>
-<p>This also makes the ys additive so that sum(ys) is always and meaningfully log(1+return) over the range being summed.</p>
-<p>The first 2k ys:</p>
-<div class="figure">
-<img src="other/elems.svg" />
-
-</div>
-<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell">    toFileChart <span class="st">&quot;other/elems.svg&quot;</span> size
-        (barRange
-         (barChart <span class="fu">.</span> chartAxes <span class="fu">.</span> element <span class="dv">0</span> <span class="fu">.</span> axisTickStyle <span class="fu">.~</span> <span class="dt">TickNone</span> <span class="fu">$</span> def)
-         (zip [<span class="dv">0</span><span class="fu">..</span>] (take <span class="dv">2000</span> ys)))
-    toFileChart
-        <span class="st">&quot;other/asum.svg&quot;</span> size
-        (lineXY
-         (lineChart <span class="fu">.</span> chartAxes <span class="fu">.~</span>
-          fmap (axisTickStyle <span class="fu">.~</span> <span class="dt">TickNone</span>)
-           (def <span class="fu">^.</span> chartAxes) <span class="fu">$</span> def)
-         (zip [<span class="dv">0</span><span class="fu">..</span>] (L.scan L.sum ys)))</code></pre></div>
-<p>Accumulated sum of ys aka <code>L.scan L.sum ys</code>:</p>
-<div class="figure">
-<img src="other/asum.svg" />
-
-</div>
-<p>statistics are folded using different decay functions:</p>
-<ul class="incremental">
-<li>'lifetime': id giving stats over the entire foldable</li>
-<li>'year' : decay function of (*(1-1/250)) giving stats with a duration of about a year</li>
-<li>'month': decay function of (*(1-1/250)) giving stats with a duration of about a month</li>
-</ul>
-<table>
-<thead>
-<tr class="header">
-<th align="left">stat</th>
-<th align="left">lifetime</th>
-<th align="left">year</th>
-<th align="left">month</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td align="left">mean</td>
-<td align="left">0.000288</td>
-<td align="left">0.000708</td>
-<td align="left">0.00115</td>
-</tr>
-<tr class="even">
-<td align="left">sd</td>
-<td align="left">0.00973</td>
-<td align="left">0.00812</td>
-<td align="left">0.00645</td>
-</tr>
-<tr class="odd">
-<td align="left">abs mean</td>
-<td align="left">0.00657</td>
-<td align="left">0.00577</td>
-<td align="left">0.00488</td>
-</tr>
-<tr class="even">
-<td align="left">pa mean</td>
-<td align="left">0.0721</td>
-<td align="left">0.177</td>
-<td align="left">0.287</td>
-</tr>
-<tr class="odd">
-<td align="left">pa sd</td>
-<td align="left">0.154</td>
-<td align="left">0.128</td>
-<td align="left">0.102</td>
-</tr>
-</tbody>
-</table>
-<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell">    toFileMd <span class="st">&quot;other/basic_stats.md&quot;</span> <span class="fu">$</span>
-        table [<span class="st">&quot;stat&quot;</span>,<span class="st">&quot;lifetime&quot;</span>,<span class="st">&quot;year&quot;</span>,<span class="st">&quot;month&quot;</span>]
-        (transpose
-         [ labels
-         , formatStats <span class="dv">250</span> <span class="fu">$</span> L.fold (statsF <span class="dv">1</span>) ys
-         , formatStats <span class="dv">250</span> <span class="fu">$</span> L.fold (statsF (<span class="dv">1</span><span class="fu">-</span><span class="dv">1</span><span class="fu">/</span><span class="dv">250</span>)) ys
-         , formatStats <span class="dv">250</span> <span class="fu">$</span> L.fold (statsF (<span class="dv">1</span><span class="fu">-</span><span class="dv">1</span><span class="fu">/</span><span class="dv">20</span>)) ys
-         ])</code></pre></div>
-<p>A histogram of all elements, outliers truncated.</p>
-<div class="figure">
-<img src="other/hist.svg" />
-
-</div>
-<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell">    <span class="kw">let</span> h <span class="fu">=</span> toXY <span class="fu">$</span> fill (rangeCuts <span class="dv">100</span> (<span class="fu">-</span><span class="fl">0.02</span>) <span class="fl">0.02</span>) ys
-    toFileChart <span class="st">&quot;other/hist.svg&quot;</span> size <span class="fu">$</span>
-      barRange
-      (barChart <span class="fu">.</span> chartAxes <span class="fu">.~</span>
-       [axisTickStyle <span class="fu">.~</span> <span class="dt">TickLabels</span>
-        (formatToString (prec <span class="dv">2</span>) <span class="fu">&lt;$&gt;</span> rangeCuts <span class="dv">4</span> (<span class="fu">-</span><span class="fl">0.02</span>) <span class="fl">0.02</span>)
-        <span class="fu">$</span> def] <span class="fu">$</span> def)
-      h</code></pre></div>
-<h2 id="quantiles">quantiles</h2>
-<p>One problem with a histogram is the necessity of a prior about binning range and size. An online approach - enforcing a single step through the data starting from scratch - tends to push these two-pass problems to the surface.</p>
-<p>A similar statistic is a quantile computation, where bin ranges are allowed to vary, with bin edges converging to quantiles (or percentiles or whatever).</p>
-<pre><code>[min, 10th, 20th, .. 90th, max]: -0.229 -0.00741 -0.00603 -0.00292 -0.00110 0.000469 0.00203 0.00388 0.00667 0.00854 0.110
-online [min, 10th, 20th, .. 90th, max] with decay rate = 0.996 (one year) -0.0339 -0.00504 -0.00175 -0.000316 0.000465 0.000828 0.00137 0.00238 0.00391 0.00677 0.0133</code></pre>
-<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell">    toFileMd <span class="st">&quot;other/quantiles.md&quot;</span> <span class="fu">$</span>
-        <span class="st">&quot;\n    [min, 10th, 20th, .. 90th, max]:&quot;</span> <span class="fu">&lt;&gt;</span>
-        mconcat (sformat (<span class="st">&quot; &quot;</span> <span class="fu">%</span> prec <span class="dv">3</span>) <span class="fu">&lt;$&gt;</span> toList
-                 (L.fold (quantiles&#39; <span class="dv">11</span>) ys)) <span class="fu">&lt;&gt;</span>
-        <span class="st">&quot;\n    online [min, 10th, 20th, .. 90th, max] with decay rate = 0.996 (one year)&quot;</span> <span class="fu">&lt;&gt;</span>
-        mconcat (sformat (<span class="st">&quot; &quot;</span> <span class="fu">%</span> prec <span class="dv">3</span>) <span class="fu">&lt;$&gt;</span> toList
-                 (L.fold (quantiles <span class="dv">11</span> identity <span class="fl">0.996</span>) ys))</code></pre></div>
-<h2 id="digitize">digitize</h2>
-<p>A related computation is to output the quantile of each value:</p>
-<pre><code>first 100 values digitized into quantiles: 0.00 0.00 1.00 1.00 1.00 3.00 2.00 2.00 2.00 2.00 2.00 2.00 2.00 1.00 1.00 2.00 3.00 3.00 3.00 2.00 3.00 2.00 1.00 3.00 2.00 4.00 4.00 1.00 3.00 1.00 2.00 1.00 4.00 1.00 2.00 1.00 4.00 3.00 3.00 2.00 1.00 1.00 4.00 2.00 1.00 3.00 3.00 2.00 3.00 2.00 3.00 3.00 4.00 2.00 2.00 4.00 4.00 2.00 3.00 1.00 4.00 1.00 2.00 4.00 2.00 3.00 4.00 2.00 2.00 1.00 2.00 3.00 3.00 4.00 4.00 2.00 2.00 4.00 2.00 3.00 1.00 3.00 3.00 3.00 3.00 4.00 1.00 1.00 4.00 3.00 1.00 4.00 2.00 1.00 4.00 4.00 4.00 1.00 2.00 2.00</code></pre>
-<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell">    toFileMd <span class="st">&quot;other/digitize.md&quot;</span> <span class="fu">$</span>
-        <span class="st">&quot;\n    first 100 values digitized into quantiles:&quot;</span> <span class="fu">&lt;&gt;</span>
-        mconcat ((sformat (<span class="st">&quot; &quot;</span> <span class="fu">%</span> prec <span class="dv">3</span>) <span class="fu">&lt;$&gt;</span>)
-                 (take <span class="dv">100</span> <span class="fu">$</span> L.scan (digitize <span class="dv">5</span> identity <span class="fl">0.996</span>) ys))</code></pre></div>
-<h2 id="basic-stats-fold">basic stats fold</h2>
-<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="ot">labels ::</span> [<span class="dt">Text</span>]
-labels <span class="fu">=</span>
-    [<span class="st">&quot;mean&quot;</span>,
-     <span class="st">&quot;sd&quot;</span>,
-     <span class="st">&quot;abs mean&quot;</span>,
-     <span class="st">&quot;pa mean&quot;</span>,
-     <span class="st">&quot;pa sd&quot;</span>
-    ]
-
-<span class="kw">data</span> <span class="dt">Stats</span> <span class="fu">=</span>
-    <span class="dt">Stats</span> {
-<span class="ot">    statMa ::</span> <span class="dt">Double</span>,
-<span class="ot">    statStd ::</span> <span class="dt">Double</span>,
-<span class="ot">    statAbsma::</span> <span class="dt">Double</span>}
-
-<span class="ot">statsF ::</span> <span class="dt">Double</span> <span class="ot">-&gt;</span> <span class="dt">L.Fold</span> <span class="dt">Double</span> <span class="dt">Stats</span>
-statsF rate <span class="fu">=</span> <span class="dt">Stats</span> <span class="fu">&lt;$&gt;</span> ma rate <span class="fu">&lt;*&gt;</span> std rate <span class="fu">&lt;*&gt;</span> absma rate
-
-<span class="ot">formatStats ::</span> <span class="dt">Double</span> <span class="ot">-&gt;</span> <span class="dt">Stats</span> <span class="ot">-&gt;</span> [<span class="dt">Text</span>]
-formatStats pa stats <span class="fu">=</span>
-    [ sformat (prec <span class="dv">3</span>) (statMa stats)
-    , sformat (prec <span class="dv">3</span>) (statStd stats)
-    , sformat (prec <span class="dv">3</span>) (statAbsma stats)
-    , sformat (prec <span class="dv">3</span>) (pa <span class="fu">*</span> statMa stats)
-    , sformat (prec <span class="dv">3</span>) (sqrt pa <span class="fu">*</span> statStd stats)
-    ]</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Formatting</span></code></pre></div>
+<h2 id="chart-svg">chart-svg</h2>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Chart</span></code></pre></div>
 <h2 id="data-munge">data munge</h2>
 <p>data is from <a href="https://www.quandl.com/data/YAHOO/INDEX_GSPC-S-P-500-Index">yahoo</a> and consists of the following fields:</p>
 <pre><code>Date,Open,High,Low,Close,Volume,Adjusted Close</code></pre>
@@ -230,9 +105,9 @@ formatStats pa stats <span class="fu">=</span>
   ,<span class="ot"> open ::</span> <span class="dt">ByteString</span>
   ,<span class="ot"> high ::</span> <span class="dt">ByteString</span>
   ,<span class="ot"> low ::</span> <span class="dt">ByteString</span>
-  ,<span class="ot"> close ::</span> <span class="fu">!</span><span class="dt">ByteString</span>
+  ,<span class="ot"> close ::</span> <span class="dt">ByteString</span>
   ,<span class="ot"> volume ::</span> <span class="dt">ByteString</span>
-  ,<span class="ot"> adjustedClose ::</span> <span class="dt">Double</span>
+  ,<span class="ot"> adjustedClose ::</span> <span class="fu">!</span><span class="dt">Double</span>
   } <span class="kw">deriving</span> <span class="dt">Generic</span>
 
 <span class="kw">instance</span> <span class="dt">FromRecord</span> <span class="dt">YahooRep</span></code></pre></div>
@@ -256,26 +131,81 @@ ret xs <span class="fu">=</span> L.fold diff&#39; xs
         step x a <span class="fu">=</span> <span class="kw">case</span> snd x <span class="kw">of</span>
             <span class="dt">Nothing</span> <span class="ot">-&gt;</span> ([], <span class="dt">Just</span> a)
             <span class="dt">Just</span> a&#39; <span class="ot">-&gt;</span> ((a<span class="fu">-</span>a&#39;)<span class="fu">/</span>a&#39;<span class="fu">:</span>fst x, <span class="dt">Just</span> a)</code></pre></div>
-<h2 id="markdown-and-chart-combinators">markdown and chart combinators</h2>
-<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="ot">size ::</span> (<span class="dt">Double</span>,<span class="dt">Double</span>)
-size <span class="fu">=</span> (<span class="dv">400</span>,<span class="dv">400</span>)
-
-<span class="ot">toFileChart ::</span> <span class="dt">Text</span> <span class="ot">-&gt;</span> (<span class="dt">Double</span>,<span class="dt">Double</span>) <span class="ot">-&gt;</span> <span class="dt">ChartSvg</span> <span class="dt">Double</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> ()
-toFileChart fileName shape chart <span class="fu">=</span> <span class="kw">do</span>
-    toFile (unpack fileName) shape chart
-
-
-<span class="ot">toFileMd ::</span> FilePath <span class="ot">-&gt;</span> <span class="dt">Text</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> ()
-toFileMd <span class="fu">=</span> writeFile
-
-
-<span class="ot">table ::</span> [<span class="dt">Text</span>] <span class="ot">-&gt;</span> [[<span class="dt">Text</span>]] <span class="ot">-&gt;</span> <span class="dt">Text</span>
-table headers ts <span class="fu">=</span>
-    mconcat <span class="fu">$</span> intersperse <span class="st">&quot;\n&quot;</span>
-        ([wrap headers] <span class="fu">&lt;&gt;</span>
-         [wrap (replicate (length headers) <span class="st">&quot;---&quot;</span>)] <span class="fu">&lt;&gt;</span>
-         (wrap <span class="fu">&lt;$&gt;</span> ts))
-      <span class="kw">where</span>
-        wrap xs <span class="fu">=</span> mconcat <span class="fu">$</span> [<span class="st">&quot;|&quot;</span>] <span class="fu">&lt;&gt;</span> intersperse <span class="st">&quot;|&quot;</span> xs <span class="fu">&lt;&gt;</span> [<span class="st">&quot;|&quot;</span>]</code></pre></div>
-<p>To compile via pandoc</p>
+<h2 id="main">main</h2>
+<p>main constructs output into charts and markdown fragments which are stitched together in this file using pandoc.</p>
 <pre><code>stack install &amp;&amp; readme &amp;&amp; pandoc -f markdown+lhs -t html -i readme.lhs -o readme.html --filter pandoc-include</code></pre>
+<p>Think ipython notebook style without the fancy.</p>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="ot">main ::</span> <span class="dt">IO</span> ()
+main <span class="fu">=</span> <span class="kw">do</span></code></pre></div>
+<p>The test data is the daily S&amp;P500 price index.</p>
+<p>Time and money both tend towards being geometric, so a natural transformation is to look at the differences in log price as the main unit of analysis. This is also the log(1+return).</p>
+<p>To abstract a bit, I'm going to name them ys. The xs in the data is time, but I'm choosing to forget this data piece and just retain the ordering information. So xs can be thought of as [0..] in most cases.</p>
+<p>This also makes the ys additive so that sum(ys) is always and meaningfully log(1+return) over the range being summed.</p>
+<p>The first 2k ys:</p>
+<div class="figure">
+<img src="other/elems.svg" />
+
+</div>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell">    fileSvg <span class="st">&quot;other/elems.svg&quot;</span> (<span class="dv">300</span>,<span class="dv">300</span>)
+        (barRange
+         (barChart <span class="fu">.</span> chartAxes <span class="fu">.</span> element <span class="dv">0</span> <span class="fu">.</span> axisTickStyle <span class="fu">.~</span> <span class="dt">TickNone</span> <span class="fu">$</span> def)
+         (zip [<span class="dv">0</span><span class="fu">..</span>] (take <span class="dv">2000</span> ys)))
+    fileSvg
+        <span class="st">&quot;other/asum.svg&quot;</span> (<span class="dv">300</span>,<span class="dv">300</span>)
+        (lineXY
+         (lineChart <span class="fu">.</span> chartAxes <span class="fu">.~</span>
+          fmap (axisTickStyle <span class="fu">.~</span> <span class="dt">TickNone</span>)
+           (def <span class="fu">^.</span> chartAxes) <span class="fu">$</span> def)
+         (zip [<span class="dv">0</span><span class="fu">..</span>] (L.scan L.sum ys)))</code></pre></div>
+<p>Accumulated sum of ys aka <code>L.scan L.sum ys</code>:</p>
+<div class="figure">
+<img src="other/asum.svg" />
+
+</div>
+<h2 id="basic-stats">basic stats</h2>
+<p>online mean and std at a 0.99 decay rate:</p>
+<div class="figure">
+<img src="other/moments.svg" />
+
+</div>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell">    <span class="kw">let</span> state <span class="fu">=</span> drop <span class="dv">1</span> <span class="fu">$</span> L.scan ((,) <span class="fu">&lt;$&gt;</span> (ma <span class="fl">0.9</span>) <span class="fu">&lt;*&gt;</span> (std <span class="fl">0.99</span>)) ys
+    fileSvg <span class="st">&quot;other/moments.svg&quot;</span> (<span class="dv">300</span>,<span class="dv">300</span>) <span class="fu">$</span> (linesXY def <span class="fu">$</span>
+        [ zip [<span class="dv">0</span><span class="fu">..</span>] (fst <span class="fu">&lt;$&gt;</span> state)
+        , zip [<span class="dv">0</span><span class="fu">..</span>] (snd <span class="fu">&lt;$&gt;</span> state)
+        ])</code></pre></div>
+<h2 id="histogram">histogram</h2>
+<p>A histogram of all elements, outliers truncated.</p>
+<div class="figure">
+<img src="other/hist.svg" />
+
+</div>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell">    <span class="kw">let</span> h <span class="fu">=</span> toXY <span class="fu">$</span> fill (rangeCuts <span class="dv">100</span> (<span class="fu">-</span><span class="fl">0.02</span>) <span class="fl">0.02</span>) ys
+    fileSvg <span class="st">&quot;other/hist.svg&quot;</span> (<span class="dv">300</span>,<span class="dv">300</span>) <span class="fu">$</span>
+      barRange
+      (barChart <span class="fu">.</span> chartAxes <span class="fu">.~</span>
+       [axisTickStyle <span class="fu">.~</span> <span class="dt">TickLabels</span>
+        (sformat (prec <span class="dv">2</span>) <span class="fu">&lt;$&gt;</span> rangeCuts <span class="dv">4</span> (<span class="fu">-</span><span class="fl">0.02</span>) <span class="fl">0.02</span>)
+        <span class="fu">$</span> def] <span class="fu">$</span> def)
+      h</code></pre></div>
+<h2 id="quantiles">quantiles</h2>
+<p>One problem with a histogram is the necessity of a prior about binning range and size. An online approach - enforcing a single step through the data starting from scratch - tends to push these two-pass problems to the surface.</p>
+<p>A similar statistic is a quantile computation, where bin ranges are allowed to vary, with bin edges converging to quantiles (or percentiles or whatever). The decay method is to shrink the cuts towards the latest value.</p>
+<pre><code>[min, 10th, 20th, .. 90th, max]: -0.229 -0.00741 -0.00603 -0.00292 -0.00110 0.000469 0.00203 0.00388 0.00667 0.00854 0.110
+online [min, 10th, 20th, .. 90th, max] with decay rate = 0.996 (one year) -0.0339 -0.00504 -0.00175 -0.000316 0.000465 0.000828 0.00137 0.00238 0.00391 0.00677 0.0133</code></pre>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell">    writeFile <span class="st">&quot;other/quantiles.md&quot;</span> <span class="fu">$</span>
+        <span class="st">&quot;\n    [min, 10th, 20th, .. 90th, max]:&quot;</span> <span class="fu">&lt;&gt;</span>
+        mconcat (sformat (<span class="st">&quot; &quot;</span> <span class="fu">%</span> prec <span class="dv">3</span>) <span class="fu">&lt;$&gt;</span> toList
+                 (L.fold (quantiles&#39; <span class="dv">11</span>) ys)) <span class="fu">&lt;&gt;</span>
+        <span class="st">&quot;\n    online [min, 10th, 20th, .. 90th, max] with decay rate = 0.996 (one year)&quot;</span> <span class="fu">&lt;&gt;</span>
+        mconcat (sformat (<span class="st">&quot; &quot;</span> <span class="fu">%</span> prec <span class="dv">3</span>) <span class="fu">&lt;$&gt;</span> toList
+                 (L.fold (quantiles <span class="dv">11</span> identity <span class="fl">0.996</span>) ys))</code></pre></div>
+<h2 id="digitize">digitize</h2>
+<p>A related computation is to output the quantile of each value:</p>
+<pre><code>first 100 values digitized into quantiles: 0.00 0.00 1.00 1.00 1.00 3.00 2.00 2.00 2.00 2.00 2.00 2.00 2.00 1.00 1.00 2.00 3.00 3.00 3.00 2.00 3.00 2.00 1.00 3.00 2.00 4.00 4.00 1.00 3.00 1.00 2.00 1.00 4.00 1.00 2.00 1.00 4.00 3.00 3.00 2.00 1.00 1.00 4.00 2.00 1.00 3.00 3.00 2.00 3.00 2.00 3.00 3.00 4.00 2.00 2.00 4.00 4.00 2.00 3.00 1.00 4.00 1.00 2.00 4.00 2.00 3.00 4.00 2.00 2.00 1.00 2.00 3.00 3.00 4.00 4.00 2.00 2.00 4.00 2.00 3.00 1.00 3.00 3.00 3.00 3.00 4.00 1.00 1.00 4.00 3.00 1.00 4.00 2.00 1.00 4.00 4.00 4.00 1.00 2.00 2.00</code></pre>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell">    writeFile <span class="st">&quot;other/digitize.md&quot;</span> <span class="fu">$</span>
+        <span class="st">&quot;\n    first 100 values digitized into quantiles:&quot;</span> <span class="fu">&lt;&gt;</span>
+        mconcat ((sformat (<span class="st">&quot; &quot;</span> <span class="fu">%</span> prec <span class="dv">3</span>) <span class="fu">&lt;$&gt;</span>)
+                 (take <span class="dv">100</span> <span class="fu">$</span> L.scan (digitize <span class="dv">5</span> identity <span class="fl">0.996</span>) ys))
+
+    fileSvg <span class="st">&quot;other/scratchpad.svg&quot;</span> (<span class="dv">400</span>,<span class="dv">400</span>) <span class="fu">$</span> linesXY def
+        [zip [<span class="dv">0</span><span class="fu">..</span>] (L.scan L.sum ys), zip [<span class="dv">0</span><span class="fu">..</span>] ((<span class="dv">2</span><span class="fu">*</span>)<span class="fu">&lt;$&gt;</span>(L.scan L.sum ys))]</code></pre></div>

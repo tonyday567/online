@@ -19,6 +19,7 @@ module Online.Stats (
     autocorr
   ) where
 
+import Protolude
 import qualified Control.Foldl as L
 import Control.Foldl (Fold(..))
 
@@ -39,7 +40,7 @@ online f g = Fold step begin extract
 
 -- | moving average
 ma :: Double -> Fold Double Double
-ma r = online id (*r)
+ma r = online identity (*r)
 {-# INLINABLE ma #-}
 
 -- | absolute average
