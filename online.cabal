@@ -18,7 +18,8 @@ maintainer:
   tonyday567@gmail.com
 copyright:
   Tony Day
-category:              
+category:
+  tooling            
 build-type:
   Simple
 cabal-version:
