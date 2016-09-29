@@ -28,7 +28,7 @@ library
   default-language:
     Haskell2010
   ghc-options:
-    -O2 -Wall
+    -Wall
   hs-source-dirs:
     src
   exposed-modules:
@@ -77,17 +77,11 @@ library
     TupleSections,
     TypeFamilies,
     TypeOperators
-  if impl(ghc>=8.0.1)
-    default-extensions:
-      ApplicativeDo,
-      DuplicateRecordFields,
-      TypeApplications
 
 executable readme
   default-language:
     Haskell2010
   ghc-options:
-    -O2
     -funbox-strict-fields
     -fforce-recomp
     -threaded
@@ -98,7 +92,7 @@ executable readme
   main-is:
     readme.lhs
   build-depends:
-    base,
+    base >= 4.7 && < 5,
     protolude,
     online,
     foldl,
@@ -106,7 +100,7 @@ executable readme
     text,
     bytestring,
     formatting,
-    chart-svg,
+    chart-unit,
     vector,
     primitive,
     containers
@@ -143,11 +137,6 @@ executable readme
     TupleSections,
     TypeFamilies,
     TypeOperators
-  if impl(ghc>=8.0.1)
-    default-extensions:
-      ApplicativeDo,
-      DuplicateRecordFields,
-      TypeApplications
 
 source-repository head
   type:     git
