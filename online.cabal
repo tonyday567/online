@@ -19,7 +19,7 @@ maintainer:
 copyright:
   Tony Day
 category:
-  stats            
+  statistics            
 build-type:
   Simple
 cabal-version:
