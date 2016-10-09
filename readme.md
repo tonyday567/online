@@ -307,6 +307,16 @@ online mean and std at a 0.99 decay rate:
         ])
 ```
 
+scan of 1000 recent ma 0.99 and std 0.99 rendered as an XY scatter.
+
+![](other/scatter.svg)
+
+``` {.sourceCode .literate .haskell}
+    fileSvg "other/scatter.svg" (500,500) $
+        scatterXY def $ drop (length ys - 1000) $
+        L.scan ((,) <$> (ma 0.99) <*> (std 0.99)) ys
+```
+
 histogram
 ---------
 

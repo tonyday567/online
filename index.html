@@ -19,7 +19,7 @@
 <pre><code>0 0 0 0 1 1 1</code></pre>
 <p>The difference between these weights and the previous weights is:</p>
 <pre><code>w = [0 0 0 -1 0 0 1]</code></pre>
-<p>So that the ma3 can be calculated as <span class="math inline"><em>m</em><em>a</em>3<sub><em>t</em></sub> = <em>m</em><em>a</em>3<sub><em>t</em> − 1</sub> + ∑(<em>w</em> * <em>x</em><em>s</em>)/3</span></p>
+<p>So that the ma3 can be calculated as <span class="math inline">\(ma3_t = ma3_{t-1} + \sum (w * xs)/3\)</span></p>
 <h2 id="a-better-moving-average">a better moving average</h2>
 <p>There are other weighting schemes, and a better one than the simple moving average is the exponential moving average, where the weights look like this:</p>
 <pre><code>0.1 * [... (0.9^2) (0.9^1) (0.9^0) _]
@@ -27,7 +27,7 @@
 0.1 * [... (0.9^3) (0.9^2) (0.9^1) 1]</code></pre>
 <p>So that the difference is:</p>
 <pre><code>0.1 * [... (-0.1 * 0.9^2) (-0.1 * 0.9^1) (-0.1 * 0.9^0) 1]</code></pre>
-<p>And, as it happens, <span class="math inline"><em>e</em><em>m</em><em>a</em><sub><em>t</em></sub> = 0.9 * <em>e</em><em>m</em><em>a</em><sub><em>t</em> − 1</sub> + 0.1 * <em>x</em><sub><em>t</em></sub></span></p>
+<p>And, as it happens, <span class="math inline">\(ema_{t} = 0.9 * ema_{t-1} + 0.1 * x_t\)</span></p>
 <p>This state variable (or statistic) is quite compact (one state variable being the current ma) compared with the simple moving average where the last n values need to be remembered in order to drop the nth oldest each update. This also makes it blaxingly fast compared to the simple average update.</p>
 <p>More generally, the baseline narrative of an online moving average - what have the values averaged lately - tends towards preferring the exponential version as:</p>
 <ul class="incremental">
@@ -160,6 +160,14 @@ main <span class="fu">=</span> <span class="kw">do</span></code></pre></div>
         [ zip [<span class="dv">0</span><span class="fu">..</span>] (fst <span class="fu">&lt;$&gt;</span> st)
         , zip [<span class="dv">0</span><span class="fu">..</span>] (snd <span class="fu">&lt;$&gt;</span> st)
         ])</code></pre></div>
+<p>scan of 1000 recent ma 0.99 and std 0.99 rendered as an XY scatter.</p>
+<div class="figure">
+<img src="other/scatter.svg" />
+
+</div>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell">    fileSvg <span class="st">&quot;other/scatter.svg&quot;</span> (<span class="dv">500</span>,<span class="dv">500</span>) <span class="fu">$</span>
+        scatterXY def <span class="fu">$</span> drop (length ys <span class="fu">-</span> <span class="dv">1000</span>) <span class="fu">$</span>
+        L.scan ((,) <span class="fu">&lt;$&gt;</span> (ma <span class="fl">0.99</span>) <span class="fu">&lt;*&gt;</span> (std <span class="fl">0.99</span>)) ys</code></pre></div>
 <h2 id="histogram">histogram</h2>
 <p>A histogram of all elements, outliers truncated.</p>
 <div class="figure">
