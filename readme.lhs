@@ -6,14 +6,20 @@
 
 Exploring the design space of online algorithms, charting, statistics and haskell.
 
-> import Protolude hiding ((%))
+> import Tower.Prelude hiding ((%))
 > import Control.Monad.Primitive (unsafeInlineIO)
 
 online library
 ---
 
 > import Online
+> import Chart.Unit
+> import Data.Default
+> import Control.Lens
 > import qualified Control.Foldl as L
+> import Linear hiding (identity)
+>
+> 
 
 tl;dr
 
@@ -149,6 +155,7 @@ chart-unit
 ---
 
 > import Chart.Unit
+> import Chart.Types
 
 data munge
 ---
@@ -218,16 +225,15 @@ The first 2k ys:
 ![](other/elems.svg)
 
 >     fileSvg "other/elems.svg" (300,300)
->         (barRange
->          (barChart . chartAxes . element 0 . axisTickStyle .~ TickNone $ def)
->          (zip [0..] (take 2000 ys)))
+>         (bar
+>          (chartAxes . element 0 . axisTickStyle .~ TickNone $ def)
+>          [def]
+>          ([zipWith V2 [0..] (take 2000 ys)]))
 >     fileSvg
 >         "other/asum.svg" (300,300)
->         (lineXY
->          (lineChart . chartAxes .~
->           fmap (axisTickStyle .~ TickNone)
->            (def ^. chartAxes) $ def)
->          (zip [0..] (L.scan L.sum ys)))
+>         (line def [def]
+>          ([zipWith V2 [0..] (L.scan L.sum ys)])
+>          )
 
 Accumulated sum of ys aka `L.scan L.sum ys`:
 
@@ -241,9 +247,9 @@ online mean and std at a 0.99 decay rate:
 ![](other/moments.svg)
 
 >     let st = drop 1 $ L.scan ((,) <$> (ma 0.9) <*> (std 0.99)) ys
->     fileSvg "other/moments.svg" (300,300) $ (linesXY def $
->         [ zip [0..] (fst <$> st)
->         , zip [0..] (snd <$> st)
+>     fileSvg "other/moments.svg" (300,300) $ (line def [def, def] $
+>         [ zipWith V2 [0..] (fst <$> st)
+>         , zipWith V2 [0..] (snd <$> st)
 >         ])
 
 scan of 1000 recent ma 0.99 and std 0.99 rendered as an XY scatter.
@@ -251,8 +257,8 @@ scan of 1000 recent ma 0.99 and std 0.99 rendered as an XY scatter.
 ![](other/scatter.svg)
 
 >     fileSvg "other/scatter.svg" (500,500) $
->         scatterXY def $ drop (length ys - 1000) $
->         L.scan ((,) <$> (ma 0.99) <*> (std 0.99)) ys
+>         scatter def [def] $ [drop (length ys - 1000) $
+>         L.scan (V2 <$> (ma 0.99) <*> (std 0.99)) ys]
 
 
 histogram
@@ -264,12 +270,13 @@ A histogram of all elements, outliers truncated.
 
 >     let h = toXY $ fill (rangeCuts 100 (-0.02) 0.02) ys
 >     fileSvg "other/hist.svg" (300,300) $
->       barRange
->       (barChart . chartAxes .~
+>       bar
+>       (chartAxes .~
 >        [axisTickStyle .~ TickLabels
 >         (sformat (prec 2) <$> rangeCuts 4 (-0.02) 0.02)
 >         $ def] $ def)
->       h
+>       [def]
+>       ([uncurry V2 <$> h])
 
 
 quantiles
@@ -306,8 +313,18 @@ other/digitize.md
 >         mconcat ((sformat (" " % prec 3) <$>)
 >                  (take 100 $ L.scan (digitize 5 identity 0.996) ys))
 >
->     filePng "other/scratchpad.png" (400,400) $ linesXY def
->         [zip [0..] (L.scan L.sum ys), zip [0..] ((2*)<$>(L.scan L.sum ys))]
+>     filePng "other/scratchpad.png" (400,400) $ line def [def]
+>         [zipWith V2 [0..] (L.scan L.sum ys), zipWith V2 [0..] ((2*)<$>(L.scan L.sum ys))]
+
+regression
+===
+
+Until this point, we have been calculating statistics and haven't put any notion of prediction on the table.  Let's start with some sort of hypothesis like:
+
+    mean_t = a + mean_hat * b + std_hat * c
+    std_t = a + mean_hat * b + std_hat * c
+
+I omit any `error` term as I haven't yet decided what exactly is stochastic in the above terms.
 
 workflow
 ---

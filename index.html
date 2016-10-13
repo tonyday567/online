@@ -1,11 +1,16 @@
 <p><meta charset="utf-8"> <link rel="stylesheet" href="other/lhs.css"></p>
 <h1 id="online-build-status"><a href="https://tonyday567.github.io/readme-lhs/index.html">online</a> <a href="https://travis-ci.org/tonyday567/online"><img src="https://travis-ci.org/tonyday567/online.png" alt="Build Status" /></a></h1>
 <p>Exploring the design space of online algorithms, charting, statistics and haskell.</p>
-<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Protolude</span> <span class="kw">hiding</span> ((%))
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Tower.Prelude</span> <span class="kw">hiding</span> ((%))
 <span class="kw">import </span><span class="dt">Control.Monad.Primitive</span> (unsafeInlineIO)</code></pre></div>
 <h2 id="online-library">online library</h2>
 <div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Online</span>
-<span class="kw">import qualified</span> <span class="dt">Control.Foldl</span> <span class="kw">as</span> <span class="dt">L</span></code></pre></div>
+<span class="kw">import </span><span class="dt">Chart.Unit</span>
+<span class="kw">import </span><span class="dt">Data.Default</span>
+<span class="kw">import </span><span class="dt">Control.Lens</span>
+<span class="kw">import qualified</span> <span class="dt">Control.Foldl</span> <span class="kw">as</span> <span class="dt">L</span>
+<span class="kw">import </span><span class="dt">Linear</span> <span class="kw">hiding</span> (identity)
+</code></pre></div>
 <p>tl;dr</p>
 <p>online turns a statistic (a summary or fold of data) into an online algorithm.</p>
 <h2 id="motivation-a-simple-moving-average">motivation: a simple moving average</h2>
@@ -19,7 +24,7 @@
 <pre><code>0 0 0 0 1 1 1</code></pre>
 <p>The difference between these weights and the previous weights is:</p>
 <pre><code>w = [0 0 0 -1 0 0 1]</code></pre>
-<p>So that the ma3 can be calculated as <span class="math inline">\(ma3_t = ma3_{t-1} + \sum (w * xs)/3\)</span></p>
+<p>So that the ma3 can be calculated as <span class="math inline"><em>m</em><em>a</em>3<sub><em>t</em></sub> = <em>m</em><em>a</em>3<sub><em>t</em> − 1</sub> + ∑(<em>w</em> * <em>x</em><em>s</em>)/3</span></p>
 <h2 id="a-better-moving-average">a better moving average</h2>
 <p>There are other weighting schemes, and a better one than the simple moving average is the exponential moving average, where the weights look like this:</p>
 <pre><code>0.1 * [... (0.9^2) (0.9^1) (0.9^0) _]
@@ -27,7 +32,7 @@
 0.1 * [... (0.9^3) (0.9^2) (0.9^1) 1]</code></pre>
 <p>So that the difference is:</p>
 <pre><code>0.1 * [... (-0.1 * 0.9^2) (-0.1 * 0.9^1) (-0.1 * 0.9^0) 1]</code></pre>
-<p>And, as it happens, <span class="math inline">\(ema_{t} = 0.9 * ema_{t-1} + 0.1 * x_t\)</span></p>
+<p>And, as it happens, <span class="math inline"><em>e</em><em>m</em><em>a</em><sub><em>t</em></sub> = 0.9 * <em>e</em><em>m</em><em>a</em><sub><em>t</em> − 1</sub> + 0.1 * <em>x</em><sub><em>t</em></sub></span></p>
 <p>This state variable (or statistic) is quite compact (one state variable being the current ma) compared with the simple moving average where the last n values need to be remembered in order to drop the nth oldest each update. This also makes it blaxingly fast compared to the simple average update.</p>
 <p>More generally, the baseline narrative of an online moving average - what have the values averaged lately - tends towards preferring the exponential version as:</p>
 <ul class="incremental">
@@ -82,7 +87,8 @@ corr r = (\cov&#39; stdx stdy -&gt; cov&#39; / (stdx * stdy)) &lt;$&gt; cov r &l
 <h2 id="pretty-printing">pretty printing</h2>
 <div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Formatting</span></code></pre></div>
 <h2 id="chart-unit">chart-unit</h2>
-<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Chart.Unit</span></code></pre></div>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Chart.Unit</span>
+<span class="kw">import </span><span class="dt">Chart.Types</span></code></pre></div>
 <h2 id="data-munge">data munge</h2>
 <p>data is from <a href="https://www.quandl.com/data/YAHOO/INDEX_GSPC-S-P-500-Index">yahoo</a> and consists of the following fields:</p>
 <pre><code>Date,Open,High,Low,Close,Volume,Adjusted Close</code></pre>
@@ -134,16 +140,15 @@ main <span class="fu">=</span> <span class="kw">do</span></code></pre></div>
 
 </div>
 <div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell">    fileSvg <span class="st">&quot;other/elems.svg&quot;</span> (<span class="dv">300</span>,<span class="dv">300</span>)
-        (barRange
-         (barChart <span class="fu">.</span> chartAxes <span class="fu">.</span> element <span class="dv">0</span> <span class="fu">.</span> axisTickStyle <span class="fu">.~</span> <span class="dt">TickNone</span> <span class="fu">$</span> def)
-         (zip [<span class="dv">0</span><span class="fu">..</span>] (take <span class="dv">2000</span> ys)))
+        (bar
+         (chartAxes <span class="fu">.</span> element <span class="dv">0</span> <span class="fu">.</span> axisTickStyle <span class="fu">.~</span> <span class="dt">TickNone</span> <span class="fu">$</span> def)
+         [def]
+         ([zipWith <span class="dt">V2</span> [<span class="dv">0</span><span class="fu">..</span>] (take <span class="dv">2000</span> ys)]))
     fileSvg
         <span class="st">&quot;other/asum.svg&quot;</span> (<span class="dv">300</span>,<span class="dv">300</span>)
-        (lineXY
-         (lineChart <span class="fu">.</span> chartAxes <span class="fu">.~</span>
-          fmap (axisTickStyle <span class="fu">.~</span> <span class="dt">TickNone</span>)
-           (def <span class="fu">^.</span> chartAxes) <span class="fu">$</span> def)
-         (zip [<span class="dv">0</span><span class="fu">..</span>] (L.scan L.sum ys)))</code></pre></div>
+        (line def [def]
+         ([zipWith <span class="dt">V2</span> [<span class="dv">0</span><span class="fu">..</span>] (L.scan L.sum ys)])
+         )</code></pre></div>
 <p>Accumulated sum of ys aka <code>L.scan L.sum ys</code>:</p>
 <div class="figure">
 <img src="other/asum.svg" />
@@ -156,9 +161,9 @@ main <span class="fu">=</span> <span class="kw">do</span></code></pre></div>
 
 </div>
 <div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell">    <span class="kw">let</span> st <span class="fu">=</span> drop <span class="dv">1</span> <span class="fu">$</span> L.scan ((,) <span class="fu">&lt;$&gt;</span> (ma <span class="fl">0.9</span>) <span class="fu">&lt;*&gt;</span> (std <span class="fl">0.99</span>)) ys
-    fileSvg <span class="st">&quot;other/moments.svg&quot;</span> (<span class="dv">300</span>,<span class="dv">300</span>) <span class="fu">$</span> (linesXY def <span class="fu">$</span>
-        [ zip [<span class="dv">0</span><span class="fu">..</span>] (fst <span class="fu">&lt;$&gt;</span> st)
-        , zip [<span class="dv">0</span><span class="fu">..</span>] (snd <span class="fu">&lt;$&gt;</span> st)
+    fileSvg <span class="st">&quot;other/moments.svg&quot;</span> (<span class="dv">300</span>,<span class="dv">300</span>) <span class="fu">$</span> (line def [def, def] <span class="fu">$</span>
+        [ zipWith <span class="dt">V2</span> [<span class="dv">0</span><span class="fu">..</span>] (fst <span class="fu">&lt;$&gt;</span> st)
+        , zipWith <span class="dt">V2</span> [<span class="dv">0</span><span class="fu">..</span>] (snd <span class="fu">&lt;$&gt;</span> st)
         ])</code></pre></div>
 <p>scan of 1000 recent ma 0.99 and std 0.99 rendered as an XY scatter.</p>
 <div class="figure">
@@ -166,8 +171,8 @@ main <span class="fu">=</span> <span class="kw">do</span></code></pre></div>
 
 </div>
 <div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell">    fileSvg <span class="st">&quot;other/scatter.svg&quot;</span> (<span class="dv">500</span>,<span class="dv">500</span>) <span class="fu">$</span>
-        scatterXY def <span class="fu">$</span> drop (length ys <span class="fu">-</span> <span class="dv">1000</span>) <span class="fu">$</span>
-        L.scan ((,) <span class="fu">&lt;$&gt;</span> (ma <span class="fl">0.99</span>) <span class="fu">&lt;*&gt;</span> (std <span class="fl">0.99</span>)) ys</code></pre></div>
+        scatter def [def] <span class="fu">$</span> [drop (length ys <span class="fu">-</span> <span class="dv">1000</span>) <span class="fu">$</span>
+        L.scan (<span class="dt">V2</span> <span class="fu">&lt;$&gt;</span> (ma <span class="fl">0.99</span>) <span class="fu">&lt;*&gt;</span> (std <span class="fl">0.99</span>)) ys]</code></pre></div>
 <h2 id="histogram">histogram</h2>
 <p>A histogram of all elements, outliers truncated.</p>
 <div class="figure">
@@ -176,12 +181,13 @@ main <span class="fu">=</span> <span class="kw">do</span></code></pre></div>
 </div>
 <div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell">    <span class="kw">let</span> h <span class="fu">=</span> toXY <span class="fu">$</span> fill (rangeCuts <span class="dv">100</span> (<span class="fu">-</span><span class="fl">0.02</span>) <span class="fl">0.02</span>) ys
     fileSvg <span class="st">&quot;other/hist.svg&quot;</span> (<span class="dv">300</span>,<span class="dv">300</span>) <span class="fu">$</span>
-      barRange
-      (barChart <span class="fu">.</span> chartAxes <span class="fu">.~</span>
+      bar
+      (chartAxes <span class="fu">.~</span>
        [axisTickStyle <span class="fu">.~</span> <span class="dt">TickLabels</span>
         (sformat (prec <span class="dv">2</span>) <span class="fu">&lt;$&gt;</span> rangeCuts <span class="dv">4</span> (<span class="fu">-</span><span class="fl">0.02</span>) <span class="fl">0.02</span>)
         <span class="fu">$</span> def] <span class="fu">$</span> def)
-      h</code></pre></div>
+      [def]
+      ([uncurry <span class="dt">V2</span> <span class="fu">&lt;$&gt;</span> h])</code></pre></div>
 <h2 id="quantiles">quantiles</h2>
 <p>One problem with a histogram is the necessity of a prior about binning range and size. An online approach - enforcing a single step through the data starting from scratch - tends to push these two-pass problems to the surface.</p>
 <p>A similar statistic is a quantile computation, where bin ranges are allowed to vary, with bin edges converging to quantiles (or percentiles or whatever). The decay method is to shrink the cuts towards the latest value.</p>
@@ -202,7 +208,12 @@ online [min, 10th, 20th, .. 90th, max] with decay rate = 0.996 (one year) -0.033
         mconcat ((sformat (<span class="st">&quot; &quot;</span> <span class="fu">%</span> prec <span class="dv">3</span>) <span class="fu">&lt;$&gt;</span>)
                  (take <span class="dv">100</span> <span class="fu">$</span> L.scan (digitize <span class="dv">5</span> identity <span class="fl">0.996</span>) ys))
 
-    filePng <span class="st">&quot;other/scratchpad.png&quot;</span> (<span class="dv">400</span>,<span class="dv">400</span>) <span class="fu">$</span> linesXY def
-        [zip [<span class="dv">0</span><span class="fu">..</span>] (L.scan L.sum ys), zip [<span class="dv">0</span><span class="fu">..</span>] ((<span class="dv">2</span><span class="fu">*</span>)<span class="fu">&lt;$&gt;</span>(L.scan L.sum ys))]</code></pre></div>
+    filePng <span class="st">&quot;other/scratchpad.png&quot;</span> (<span class="dv">400</span>,<span class="dv">400</span>) <span class="fu">$</span> line def [def]
+        [zipWith <span class="dt">V2</span> [<span class="dv">0</span><span class="fu">..</span>] (L.scan L.sum ys), zipWith <span class="dt">V2</span> [<span class="dv">0</span><span class="fu">..</span>] ((<span class="dv">2</span><span class="fu">*</span>)<span class="fu">&lt;$&gt;</span>(L.scan L.sum ys))]</code></pre></div>
+<h1 id="regression">regression</h1>
+<p>Until this point, we have been calculating statistics and haven't put any notion of prediction on the table. Let's start with some sort of hypothesis like:</p>
+<pre><code>mean_t = a + mean_hat * b + std_hat * c
+std_t = a + mean_hat * b + std_hat * c</code></pre>
+<p>I omit any <code>error</code> term as I haven't yet decided what exactly is stochastic in the above terms.</p>
 <h2 id="workflow">workflow</h2>
 <pre><code>stack install &amp;&amp; readme &amp;&amp; pandoc -f markdown+lhs -t html -i readme.lhs -o index.html --filter pandoc-include</code></pre>

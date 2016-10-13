@@ -4,7 +4,7 @@
 
 module Online.Histogram where
 
-import Protolude
+import Tower.Prelude
 -- import           Control.Foldl (Fold(..))
 import qualified Control.Foldl as L
 import qualified Data.Map.Strict as Map
@@ -40,18 +40,20 @@ range = L.fold (L.Fold step initial extract)
 equalSpacedCuts :: Int -> [Double] -> [Double]
 equalSpacedCuts n xs = cuts
   where
-    (min, max) = range xs
+    (min, max) = range xs :: (Double,Double)
     span' = max - min
-    step' = 10 ^^ floor (logBase 10 (span'/fromIntegral n))
+    step' = 10 ^^ (floor (logBase 10 (span'/fromIntegral n)) :: Int)
     err = fromIntegral n / span' * step'
+    step :: Double
     step
       | err <= 0.15 = 10 * step'
       | err <= 0.35 = 5 * step'
       | err <= 0.75 = 2 * step'
       | otherwise = step'
-    first = step * fromIntegral (floor (min/step))
-    last = step * fromIntegral (floor (max/step) + 1)
-    n' = fromIntegral $ round ((last - first)/step)
+    first = step * fromIntegral ((floor (min/step)) :: Int)
+    last = step * fromIntegral ((floor (max/step) + 1) :: Int)
+    n' :: Int
+    n' = fromInteger ((round ((last - first)/step)))
     cuts = (\x -> first+step*fromIntegral x) <$> [0..n']
 
 rangeCuts :: Int -> Double -> Double -> [Double]

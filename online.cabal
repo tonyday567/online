@@ -43,7 +43,7 @@ library
     vector,
     lens,
     deepseq,
-    protolude,
+    tower,
     containers
   default-extensions:
     NoImplicitPrelude,
@@ -94,7 +94,7 @@ executable readme
     readme.lhs
   build-depends:
     base >= 4.7 && < 5,
-    protolude,
+    tower,
     online,
     foldl,
     cassava,
@@ -104,7 +104,10 @@ executable readme
     chart-unit,
     vector,
     primitive,
-    containers
+    containers,
+    data-default,
+    linear, 
+    lens
   default-extensions:
     NoImplicitPrelude,
     UnicodeSyntax,
