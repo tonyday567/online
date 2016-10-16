@@ -2,12 +2,16 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 
+
+
 module Online.Histogram where
 
 import Tower.Prelude
 -- import           Control.Foldl (Fold(..))
 import qualified Control.Foldl as L
 import qualified Data.Map.Strict as Map
+import Linear hiding (identity)
+import Data.List
 
 -- a histogram
 data Histogram = Histogram
@@ -15,6 +19,12 @@ data Histogram = Histogram
    , _values :: Map.Map Int Double -- bucket counts
    } deriving (Show, Eq)
 
+
+freq' :: Map.Map Int Double -> Map.Map Int Double
+freq' m = Map.map (* reciprocal (foldl (+) 0 m)) m
+
+freq :: Histogram -> Histogram
+freq (Histogram c v) = Histogram c (freq' v)
 
 count :: L.Fold Int (Map Int Double)
 count = L.Fold (\x a -> Map.insertWith (+) a 1 x) Map.empty identity
@@ -64,12 +74,14 @@ rangeCuts n start end =
 fill :: [Double] -> [Double] -> Histogram
 fill cuts xs = Histogram cuts (histMap cuts xs)
 
-toXY :: Histogram -> [(Double,Double)]
-toXY (Histogram cuts counts) = zip x y
+toV4 :: Histogram -> [V4 Double]
+toV4 (Histogram cuts counts) = zipWith4 V4 x y z w
     where
       n = length cuts - 1
-      y = (\x -> Map.findWithDefault 0 x counts) <$> [1..n]
-      x = zipWith (+) cuts ((0.5*) <$> (zipWith (-) (drop 1 cuts) cuts))
+      y = cycle [0]
+      w = (\x -> Map.findWithDefault 0 x counts) <$> [1..n]
+      x = cuts
+      z = drop 1 cuts
 
 hist :: [Double] -> Double -> L.Fold Double Histogram
 hist cuts r =
@@ -78,7 +90,7 @@ hist cuts r =
        Histogram cuts
        (Map.unionWith (+)
         (Map.map (*r) counts)
-        (Map.singleton (L.fold countBool (fmap (a>) cuts)) (1-(1/r)))))
+        (Map.singleton (L.fold countBool (fmap (a>) cuts)) 1)))
     (Histogram cuts mempty)
     identity
 

@@ -58,6 +58,9 @@ std :: (ExpField a, Module a) => Scalar a -> Fold a a
 std r = (\s ss -> sqrt (ss - s**(one+one))) <$> ma r <*> sqma r
 {-# INLINABLE std #-}
 
+-- std r = (\s ss -> (ss - s**(one+one))**(one/(one+one))) <$> ma r <*> sqma r
+
+
 -- | covariance of a tuple
 cov :: (Module a, Field a) => Scalar a -> Fold (a,a) a
 cov r = (\xy xbar ybar -> xy - xbar * ybar) <$> online (uncurry (*)) (.* r) <*> online fst (.* r) <*> online snd (.* r)

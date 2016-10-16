@@ -42,6 +42,7 @@ library
     foldl,
     vector,
     lens,
+    linear,
     deepseq,
     tower,
     containers

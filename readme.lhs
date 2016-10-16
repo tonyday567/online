@@ -4,135 +4,122 @@
 [online](https://tonyday567.github.io/readme-lhs/index.html) [![Build Status](https://travis-ci.org/tonyday567/online.png)](https://travis-ci.org/tonyday567/online)
 ===
 
-Exploring the design space of online algorithms, charting, statistics and haskell.
-
-> import Tower.Prelude hiding ((%))
-> import Control.Monad.Primitive (unsafeInlineIO)
-
-online library
----
-
-> import Online
-> import Chart.Unit
-> import Data.Default
-> import Control.Lens
-> import qualified Control.Foldl as L
-> import Linear hiding (identity)
->
-> 
-
 tl;dr
 
 online turns a statistic (a summary or fold of data) into an online algorithm.
 
-motivation: a simple moving average
----
+derivation
+===
 
-To start somewhere, let's deconstruct the calculation of a simple moving average. Here's an average:
+Imagine a data stream, like an ordered indexed container or a time-series of measurements. An exponential moving average can be calculated as a repeated iteration over a stream of xs:
 
-    av xs = (sum xs/length xs)
-    -- av [0..10] == 5.0
+$$ ema_t = ema_{t-1} * 0.9 + x_t * 0.1$$
 
-Imagine that there is a data stream, arriving in an sequence (an ordering from first to last).  As the data values arrive, a state variable is updated which is the moving average of the last 3 values (ma3).  To calculate ma3, the values so far would be multiplied by the following weights, summed, and divided by 3.
+The 0.1 is akin to the learning rate in machine learning, or 0.9 can be thought of as a decaying or a rate of forgetting.  An exponential moving average learns about what the value of x has been lately, where lately is, on average, about 1/0.1 = 10 x's ago.  All very neat.
 
-When 6 values have been consumed so far, the ma3 is:
+The first bit of neat is speed.  There's 2 times and a plus.  The next is space: an ema is representing the recent xs in a size as big as a single x.  Compare that with a simple moving average where you have to keep the history of the last n xs around to keep up (just try it).
 
-    sum(xs * [0 0 0 1 1 1])/3
-
-The next value streams in, and the ma3 calculation weights now looks like this:
-
-    0 0 0 0 1 1 1
-
-The difference between these weights and the previous weights is:
-
-    w = [0 0 0 -1 0 0 1]
-
-So that the ma3 can be calculated as $ma3_t = ma3_{t-1} + \sum (w * xs)/3$
-
-
-a better moving average
----
-
-There are other weighting schemes, and a better one than the simple moving average is the exponential moving average, where the weights look like this:
-
-    0.1 * [... (0.9^2) (0.9^1) (0.9^0) _]
-
-    0.1 * [... (0.9^3) (0.9^2) (0.9^1) 1]
-
-So that the difference is:
-
-    0.1 * [... (-0.1 * 0.9^2) (-0.1 * 0.9^1) (-0.1 * 0.9^0) 1]
-
-And, as it happens, $ema_{t} = 0.9 * ema_{t-1} + 0.1 * x_t$
-
-This state variable (or statistic) is quite compact (one state variable being the current ma) compared with the simple moving average where the last n values need to be remembered in order to drop the nth oldest each update.  This also makes it blaxingly fast compared to the simple average update.
-
-More generally, the baseline narrative of an online moving average - what have the values averaged lately - tends towards preferring the exponential version as:
-
-- very old values are almost forgotten ie not be influencing the current moving average much at all, compared with the simple moving average where past values go from having no effect to a lot at an arbitrary point in the history.
-- newer values should hold more weight than older ones; weights are monotonicaly decreasing from latest to oldest value.
-
+It's so neat, it's probably a viable monoidal category all by itself.
 
 online
----
+===
 
-`online` reifies this pattern into the foldl library api:
+Haskell allows us to abstract the compound ideas in an ema and create polymorphic routines over a wide variety of statistics, so that they all retain these properties of speed, space and rigour.
 
-    av xs = L.fold (online id (*0.9)) xs
+    av xs = L.fold (online identity (.* 0.9)) xs
     -- av [0..10] == 6.030559401413827
     -- av [0..100] == 91.00241448887785
 
-And provides an intuitive representation of how big recent numbers have been at the end of a [0..100] data stream: 91ish rather than 50 when comparing the lifetime average.
+`online identity (.* 0.9)` is how you express an ema with a decay rate of 0.9.
 
-online exposes:
+Here's an average of recent values for the grey line, for r=0.9 and r=0.99.
 
-- a decay function governing the rate at which the statistic decays.
-- a stat function, that is the statistic to be computed.
+![](other/av.svg)
 
-decay
+online works for any statistic.  Here's the construction of standard deviation using applicative style:
+
+    std :: Double -> L.Fold Double Double
+    std r = (\s ss -> sqrt (ss - s**2)) <$> ma r <*> sqma r
+      where
+        ma r = online identity (.*r)
+        sqma r = online (**2) (.*r)
+
+And the results over our fake data:
+
+![](other/std.svg)
+
+daily stock market data
 ---
 
-The decay function `(*r)` can be widely interpreted:
+Time to explore online using the most data-mined time-series in history; the S&P500 return since 1958. Here's the accumulation of all those daily random variates:
 
-- a decay function equal to `id` provides lifetime statistical calculations ie no forgetting.
-- a decay function of `const 0` (or `(*0)`) provides the latest value ie always forget.
-- in physical systems, an exponential-weighted moving average where the center-of-mass is x would be isomorphic to a decay function of (*(1-1/x)).
-- where the data represents time series, the center-of-mass is often referred to as duration.  The duration of (*0.99) is 100.
-- in bayesian methods, a learning rate of x is often equivalent to a statistic being decayed or forgotten by (*(1-x))
+![](other/asum.svg)
 
-stat
+And here's the histogram of daily log returns (grey background), and the most recent histogram onlined with a rate of 0.99:
+
+![](other/hist.svg)
+
+Recent returns have been higher and less volatile than the long history.  Roll on bull market.
+
+momentum
+===
+
+Starting with a hypothesis that the current conditional mean is related to historical average return, we can construct a linear map as so:
+
+$$ r_t = beta * av_o + alpha + e $$
+$$ e = r_t - beta * av_o - alpha $$
+
+Without this structure, each daily value can be seen as a surprise, so that $e=r_t$.
+
+We can make the results of the regression an online fold as well:
+
+![](other/cmean.svg)
+
+The (online) alpha regression estimate through time is orange and beta is blue.  A typical pattern for regression - terms of opposite sign pretending to make sense of noise.  This is not the get-rich droid you are looking for.
+
+But let's say it was.  Let's look at the histograms of return, and the residual error term if we include the conditional mean relationship:
+
+![](other/cmeane.svg)
+
+If there is an effect of recent returns on current return stochastics, it's small, but it does move the residual stochastics more towards a more symetrical distribution.
+
+fat tails
 ---
 
-stat is a premap function that is the statistic of interest:
+We can do similar things for magnitude measures.
 
-    av = online id id
+$$r_t**2 = beta * r2_o + alpha$$
+$$r_t = (sqrt r_t**2) * e
+$$e = r_t / sqrt (beta * r2_o + alpha)
 
-is a classical average over the whole sample with no forgetting.
+![](other/csqma.svg)
 
-    ma x = online id (*0.9)
 
-is a moving average with a decay rate of 0.9.
+and where to from here ...
+====
 
-    sqav = online (*2) id
+- alpha and beta are independent calculations - wrong!
+- calculate stats of e (residual error) that we might be interested in.
+- draw a normal distribution on top of e
+- add in code and explanations in the above sections
 
-is a lifetime squared average.
 
-foldl Fold's are applicative functors, so:
 
-    std = (\s ss -> sqrt (ss - s**2)) <$> av <*> sqav
 
-is the standard deviation.
+Code
+===
 
-An exponentially-weighted moving average is then: 
-
-    estd x x' = (\s ss -> sqrt (ss - s**2)) <$> online id (*x) <*> online (*2) (*x')
-
-Note that, unlike the usual calc, the mean is conditional; itself a weighted average calculation, and with potentially a different decay function.
-
-Just about any statistic can be made online.  Here's an online, tuple correlation stat:
-
-    cov r = (\xy xbar ybar -> xy - xbar * ybar) <$> online (uncurry (*)) r <*> online fst r <*> online snd r
-    corr r = (\cov' stdx stdy -> cov' / (stdx * stdy)) <$> cov r <*> L.premap fst (std r) <*> L.premap snd (std r)
+> import Tower.Prelude hiding ((%))
+> import Control.Monad.Primitive (unsafeInlineIO)
+> import Online
+> import Chart.Unit
+> import Chart.Types
+> import Data.Default
+> import Control.Lens
+> import qualified Control.Foldl as L
+> import Linear hiding (identity)
+> import Data.List
+>
 
 cassava
 ---
@@ -201,7 +188,7 @@ The base unit for analysis (which I've called ys to abstract) is log(1+return). 
 >             Just a' -> ((a-a')/a':fst x, Just a)
 
 main
----
+===
 
 main constructs output into charts and markdown fragments which are stitched together in this file using pandoc.
 
@@ -211,33 +198,78 @@ Think ipython notebook style without the fancy.
 
 > main :: IO ()
 > main = do
-
-The test data is the daily S&P500 price index.
-
-Time and money both tend towards being geometric, so a natural transformation is to look at the differences in log price as the main unit of analysis.  This is also the log(1+return).
-
-To abstract a bit, I'm going to name them ys.  The xs in the data is time, but I'm choosing to forget this data piece and just retain the ordering information.  So xs can be thought of as [0..] in most cases.
-
-This also makes the ys additive so that sum(ys) is always and meaningfully log(1+return) over the range being summed.
-
-The first 2k ys:
-
-![](other/elems.svg)
-
 >     fileSvg "other/elems.svg" (300,300)
->         (bar
+>         (rect'
 >          (chartAxes . element 0 . axisTickStyle .~ TickNone $ def)
 >          [def]
->          ([zipWith V2 [0..] (take 2000 ys)]))
+>          ([zipWith4 V4 [0..] (replicate 2000 0) [1..] (take 2000 ys)]))
 >     fileSvg
 >         "other/asum.svg" (300,300)
->         (line def [def]
+>         (line def [(LineConfig 0.002 (Color 0.33 0.33 0.33 0.4))]
 >          ([zipWith V2 [0..] (L.scan L.sum ys)])
 >          )
-
-Accumulated sum of ys aka `L.scan L.sum ys`:
-
-![](other/asum.svg)
+>     let fake = ([0..100] <> replicate 101 100 :: [Double])
+>     fileSvg "other/av.svg" (300,300) $
+>         line def
+>         [ LineConfig 0.005 (Color 0.88 0.33 0.12 1)
+>         , LineConfig 0.005 (Color 0.12 0.33 0.83 1)
+>         , LineConfig 0.002 (Color 0.33 0.33 0.33 1)
+>         ]
+>         [ zipWith V2 [0..] (drop 1 $ L.scan (online identity (.* 0.9)) fake)
+>         , zipWith V2 [0..] (drop 1 $ L.scan (online identity (.* 0.99)) fake)
+>         , zipWith V2 [0..] fake
+>         ]
+>     fileSvg "other/std.svg" (300,300) $
+>         line def
+>         [ LineConfig 0.005 (Color 0.88 0.33 0.12 1)
+>         , LineConfig 0.005 (Color 0.12 0.33 0.83 1)
+>         , LineConfig 0.002 (Color 0.33 0.33 0.33 1)
+>         ]
+>         [ zipWith V2 [0..] (drop 1 $ L.scan (std 0.9) fake)
+>         , zipWith V2 [0..] (drop 1 $ L.scan (std 0.99) fake)
+>         , zipWith V2 [0..] fake
+>         ]
+>     fileSvg "other/cmean.svg" (300,300) $
+>         line def
+>         [ LineConfig 0.002 (Color 0.88 0.33 0.12 1)
+>         , LineConfig 0.002 (Color 0.12 0.33 0.83 1)
+>         ]
+>         [ zipWith V2 [0..] $
+>           take 5000 $ drop 100 $ drop 2 $
+>           (L.scan (beta 0.99)) $ drop 1 $
+>           zip ys (L.scan (ma 0.9975) ys)
+>         , zipWith V2 [0..] $
+>           take 5000 $ drop 100 $ drop 2 $
+>           (L.scan (alpha 0.99)) $ drop 1 $
+>           zip ys (L.scan (ma 0.9975) ys)
+>         ]
+>     fileSvg "other/cmeane.svg" (300,300) $
+>         rect' def
+>         [def, RectConfig 0 (Color 0.88 0.33 0.12 0) (Color 0.33 0.33 0.12 0.3)]
+>         [ toV4 $ L.fold (hist (rangeCuts 6 (-0.03) 0.03) 1) $
+>           take 5000 $ drop 100 $
+>           (L.scan ((\r b o a -> r - b * o - a) <$>
+>              L.premap fst (ma 0.00001) <*>
+>              beta 0.99 <*>
+>              L.premap snd (ma 0.00001) <*>
+>              alpha 0.99)) $
+>            drop 400 $ zip ys (L.scan (ma 0.9975) ys)
+>          , toV4 $ L.fold (hist (rangeCuts 6 (-0.03) 0.03) 1) $
+>            take 5000 $ drop 100 $
+>            ys
+>          ]
+>
+>     fileSvg "other/csqma.svg" (300,300) $
+>         line def
+>         [ LineConfig 0.002 (Color 0.88 0.33 0.12 1)
+>         , LineConfig 0.002 (Color 0.12 0.33 0.83 1)
+>         ]
+>         (fmap (zipWith V2 [0..]) <$> (\x -> [fst <$> x, snd <$> x]) $
+>          take 12000 $ drop 12000 $ drop 2 $
+>          ( L.scan ((,) <$> (alpha 0.99) <*> beta 0.99)) $
+>            drop 100 $ zip ((**2)<$> ys) (L.scan (sqma 0.9975) ys))
+>
+>
 
 basic stats
 ---
@@ -247,37 +279,34 @@ online mean and std at a 0.99 decay rate:
 ![](other/moments.svg)
 
 >     let st = drop 1 $ L.scan ((,) <$> (ma 0.9) <*> (std 0.99)) ys
->     fileSvg "other/moments.svg" (300,300) $ (line def [def, def] $
+>     fileSvg "other/moments.svg" (300,300) $ (line def [(LineConfig 0.002 (Color 0.33 0.33 0.33 0.4)), (LineConfig 0.002 (Color 0.88 0.33 0.12 0.4))] $
 >         [ zipWith V2 [0..] (fst <$> st)
 >         , zipWith V2 [0..] (snd <$> st)
 >         ])
 
-scan of 1000 recent ma 0.99 and std 0.99 rendered as an XY scatter.
+scan of 1000 recent ma 0.99 and std 0.99, in basis points, rendered as a scatter chart.
 
 ![](other/scatter.svg)
 
 >     fileSvg "other/scatter.svg" (500,500) $
 >         scatter def [def] $ [drop (length ys - 1000) $
->         L.scan (V2 <$> (ma 0.99) <*> (std 0.99)) ys]
+>         fmap (10000*) <$> L.scan (V2 <$> (ma 0.99) <*> (std 0.99)) ys]
 
 
-histogram
----
-
-A histogram of all elements, outliers truncated.
+A histogram with r=0.99 with lifetime stats as the grey background
 
 ![](other/hist.svg)
 
->     let h = toXY $ fill (rangeCuts 100 (-0.02) 0.02) ys
+>     let cuts = (rangeCuts 5 (-0.02) 0.02)
+>     let h = toV4 $ freq $ L.fold (hist cuts 0.99) ys
+>     let h' = toV4 $ freq $ L.fold (hist cuts 1) ys
 >     fileSvg "other/hist.svg" (300,300) $
->       bar
->       (chartAxes .~
->        [axisTickStyle .~ TickLabels
->         (sformat (prec 2) <$> rangeCuts 4 (-0.02) 0.02)
->         $ def] $ def)
->       [def]
->       ([uncurry V2 <$> h])
-
+>       rect'
+>       (chartAxes .~ [def] $ def)
+>       [def, rectBorderColor .~ Color 0 0 0 0
+>       $ rectColor .~ Color 0.333 0.333 0.333 0.1
+>       $ def]
+>       [h, h']
 
 quantiles
 ---
@@ -298,7 +327,6 @@ other/quantiles.md
 >         mconcat (sformat (" " % prec 3) <$> toList
 >                  (L.fold (quantiles 11 identity 0.996) ys))
 
-
 digitize
 ---
 
@@ -315,16 +343,6 @@ other/digitize.md
 >
 >     filePng "other/scratchpad.png" (400,400) $ line def [def]
 >         [zipWith V2 [0..] (L.scan L.sum ys), zipWith V2 [0..] ((2*)<$>(L.scan L.sum ys))]
-
-regression
-===
-
-Until this point, we have been calculating statistics and haven't put any notion of prediction on the table.  Let's start with some sort of hypothesis like:
-
-    mean_t = a + mean_hat * b + std_hat * c
-    std_t = a + mean_hat * b + std_hat * c
-
-I omit any `error` term as I haven't yet decided what exactly is stochastic in the above terms.
 
 workflow
 ---
