@@ -6,8 +6,7 @@
 
 module Online.Histogram where
 
-import Tower.Prelude
--- import           Control.Foldl (Fold(..))
+import Protolude
 import qualified Control.Foldl as L
 import qualified Data.Map.Strict as Map
 import Linear hiding (identity)
@@ -19,9 +18,8 @@ data Histogram = Histogram
    , _values :: Map.Map Int Double -- bucket counts
    } deriving (Show, Eq)
 
-
 freq' :: Map.Map Int Double -> Map.Map Int Double
-freq' m = Map.map (* reciprocal (foldl (+) 0 m)) m
+freq' m = Map.map (* recip (foldl (+) 0 m)) m
 
 freq :: Histogram -> Histogram
 freq (Histogram c v) = Histogram c (freq' v)

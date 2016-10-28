@@ -73,7 +73,7 @@ std r = (\s ss -&gt; sqrt (ss - s**2)) &lt;$&gt; ma r &lt;*&gt; sqma r
 <li>add in code and explanations in the above sections</li>
 </ul>
 <h1 id="code">Code</h1>
-<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Tower.Prelude</span> <span class="kw">hiding</span> ((%))
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Protolude</span> <span class="kw">hiding</span> ((%))
 <span class="kw">import </span><span class="dt">Control.Monad.Primitive</span> (unsafeInlineIO)
 <span class="kw">import </span><span class="dt">Online</span>
 <span class="kw">import </span><span class="dt">Chart.Unit</span>
@@ -154,8 +154,8 @@ main <span class="fu">=</span> <span class="kw">do</span>
         , <span class="dt">LineConfig</span> <span class="fl">0.005</span> (<span class="dt">Color</span> <span class="fl">0.12</span> <span class="fl">0.33</span> <span class="fl">0.83</span> <span class="dv">1</span>)
         , <span class="dt">LineConfig</span> <span class="fl">0.002</span> (<span class="dt">Color</span> <span class="fl">0.33</span> <span class="fl">0.33</span> <span class="fl">0.33</span> <span class="dv">1</span>)
         ]
-        [ zipWith <span class="dt">V2</span> [<span class="dv">0</span><span class="fu">..</span>] (drop <span class="dv">1</span> <span class="fu">$</span> L.scan (online identity (<span class="fu">.*</span> <span class="fl">0.9</span>)) fake)
-        , zipWith <span class="dt">V2</span> [<span class="dv">0</span><span class="fu">..</span>] (drop <span class="dv">1</span> <span class="fu">$</span> L.scan (online identity (<span class="fu">.*</span> <span class="fl">0.99</span>)) fake)
+        [ zipWith <span class="dt">V2</span> [<span class="dv">0</span><span class="fu">..</span>] (drop <span class="dv">1</span> <span class="fu">$</span> L.scan (online identity (<span class="fu">*</span> <span class="fl">0.9</span>)) fake)
+        , zipWith <span class="dt">V2</span> [<span class="dv">0</span><span class="fu">..</span>] (drop <span class="dv">1</span> <span class="fu">$</span> L.scan (online identity (<span class="fu">*</span> <span class="fl">0.99</span>)) fake)
         , zipWith <span class="dt">V2</span> [<span class="dv">0</span><span class="fu">..</span>] fake
         ]
     fileSvg <span class="st">&quot;other/std.svg&quot;</span> (<span class="dv">300</span>,<span class="dv">300</span>) <span class="fu">$</span>

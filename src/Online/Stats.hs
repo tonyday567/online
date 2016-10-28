@@ -19,7 +19,7 @@ module Online.Stats (
     autocorr
   ) where
 
-import Tower.Prelude
+import Protolude
 import qualified Control.Foldl as L
 import Control.Foldl (Fold(..))
 
@@ -31,53 +31,50 @@ instance (Monoid a, Monoid b) => Monoid (Averager a b) where
     mappend (Averager (s,c)) (Averager (s',c')) = Averager (mappend s s', mappend c c')
 
 -- | online takes a function and turns it into a `Control.Foldl.Fold` where the step is an incremental update of the (isomorphic) statistic.
-online :: (Field b) => (a -> b) -> (b -> b) -> Fold a b
+online :: (Fractional b) => (a -> b) -> (b -> b) -> Fold a b
 online f g = Fold step begin extract
   where
-  begin = Averager (zero, zero)
-  step (Averager (s,c)) a = Averager ((g $ s+f a),(g $ c+one))
+  begin = Averager (0, 0)
+  step (Averager (s,c)) a = Averager ((g $ s+f a),(g $ c+1))
   extract (Averager (s,c)) = s/c
 
 -- | moving average
-ma :: (Field a, Module a) => Scalar a -> Fold a a
-ma r = online identity (.* r)
+ma :: (Fractional a) => a -> Fold a a
+ma r = online identity (* r)
 {-# INLINABLE ma #-}
 
 -- | absolute average
-absma :: (Field a, Normed a, Module a, a ~ Scalar a) => Scalar a -> Fold a a
-absma r = online abs (.* r)
+absma :: (Fractional a) => a -> Fold a a
+absma r = online abs (* r)
 {-# INLINABLE absma #-}
 
 -- | average square
-sqma :: (Field a, Module a) => Scalar a -> Fold a a
-sqma r = online (\x -> x*x) (.* r)
+sqma :: (Fractional a) => a -> Fold a a
+sqma r = online (\x -> x*x) (* r)
 {-# INLINABLE sqma #-}
 
 -- | standard deviation
-std :: (ExpField a, Module a) => Scalar a -> Fold a a
-std r = (\s ss -> sqrt (ss - s**(one+one))) <$> ma r <*> sqma r
+std :: (Floating a) => a -> Fold a a
+std r = (\s ss -> sqrt (ss - s**2)) <$> ma r <*> sqma r
 {-# INLINABLE std #-}
 
--- std r = (\s ss -> (ss - s**(one+one))**(one/(one+one))) <$> ma r <*> sqma r
-
-
 -- | covariance of a tuple
-cov :: (Module a, Field a) => Scalar a -> Fold (a,a) a
-cov r = (\xy xbar ybar -> xy - xbar * ybar) <$> online (uncurry (*)) (.* r) <*> online fst (.* r) <*> online snd (.* r)
+cov :: (Fractional a) => a -> Fold (a,a) a
+cov r = (\xy xbar ybar -> xy - xbar * ybar) <$> online (uncurry (*)) (*r) <*> online fst (*r) <*> online snd (*r)
 {-# INLINABLE cov #-}
 
 -- | correlation of a tuple
-corr :: (ExpField a, Module a) => Scalar a -> Fold (a,a) a
+corr :: (Floating a) => a -> Fold (a,a) a
 corr r = (\cov' stdx stdy -> cov' / (stdx * stdy)) <$> cov r <*> L.premap fst (std r) <*> L.premap snd (std r)
 {-# INLINABLE corr #-}
 
 -- | the beta in a simple linear regression of a tuple
-beta :: (ExpField a, Module a) => Scalar a -> Fold (a,a) a
+beta :: (Floating a) => a -> Fold (a,a) a
 beta r = (/) <$> cov r <*> L.premap snd (std r)
 {-# INLINABLE beta #-}
 
 -- | the alpha in a simple linear regression of `snd` on `fst`
-alpha :: (ExpField a, Module a) => Scalar a -> Fold (a,a) a
+alpha :: (Floating a) => a -> Fold (a,a) a
 alpha r = (\y b x -> y - b * x) <$> L.premap fst (ma r) <*> beta r <*> L.premap snd (ma r)
 {-# INLINABLE alpha #-}
 
@@ -95,7 +92,7 @@ would estimate the one-step autocorrelation relationship of the previous value a
 
 -}
 
-autocorr :: (ExpField a, Module a, BoundedField a) => Scalar a -> Scalar a -> Fold a a
+autocorr :: (Floating a, RealFloat a) => a -> a -> Fold a a
 autocorr maR corrR = 
     case ma maR of
         (Fold maStep maBegin maDone) ->

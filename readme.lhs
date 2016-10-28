@@ -109,7 +109,7 @@ and where to from here ...
 Code
 ===
 
-> import Tower.Prelude hiding ((%))
+> import Protolude hiding ((%))
 > import Control.Monad.Primitive (unsafeInlineIO)
 > import Online
 > import Chart.Unit
@@ -215,8 +215,8 @@ Think ipython notebook style without the fancy.
 >         , LineConfig 0.005 (Color 0.12 0.33 0.83 1)
 >         , LineConfig 0.002 (Color 0.33 0.33 0.33 1)
 >         ]
->         [ zipWith V2 [0..] (drop 1 $ L.scan (online identity (.* 0.9)) fake)
->         , zipWith V2 [0..] (drop 1 $ L.scan (online identity (.* 0.99)) fake)
+>         [ zipWith V2 [0..] (drop 1 $ L.scan (online identity (* 0.9)) fake)
+>         , zipWith V2 [0..] (drop 1 $ L.scan (online identity (* 0.99)) fake)
 >         , zipWith V2 [0..] fake
 >         ]
 >     fileSvg "other/std.svg" (300,300) $

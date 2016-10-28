@@ -39,12 +39,12 @@ library
     Online.Histogram
   build-depends:
     base >= 4.7 && < 5,
+    protolude,
     foldl,
     vector,
     lens,
     linear,
     deepseq,
-    tower,
     containers
   default-extensions:
     NoImplicitPrelude,
@@ -95,8 +95,8 @@ executable readme
     readme.lhs
   build-depends:
     base >= 4.7 && < 5,
-    tower,
     online,
+    protolude,
     foldl,
     cassava,
     text,
