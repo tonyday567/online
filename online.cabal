@@ -108,7 +108,11 @@ executable readme
     containers,
     data-default,
     linear, 
-    lens
+    lens,
+    pipes,
+    ad,
+    ListLike,
+    reflection
   default-extensions:
     NoImplicitPrelude,
     UnicodeSyntax,

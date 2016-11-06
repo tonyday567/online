@@ -82,7 +82,11 @@ std r = (\s ss -&gt; sqrt (ss - s**2)) &lt;$&gt; ma r &lt;*&gt; sqma r
 <span class="kw">import </span><span class="dt">Control.Lens</span>
 <span class="kw">import qualified</span> <span class="dt">Control.Foldl</span> <span class="kw">as</span> <span class="dt">L</span>
 <span class="kw">import </span><span class="dt">Linear</span> <span class="kw">hiding</span> (identity)
-<span class="kw">import </span><span class="dt">Data.List</span></code></pre></div>
+<span class="kw">import </span><span class="dt">Data.List</span>
+<span class="kw">import </span><span class="dt">Pipes</span>
+<span class="kw">import qualified</span> <span class="dt">Pipes.Prelude</span>
+<span class="kw">import </span><span class="dt">Formatting</span>
+<span class="kw">import </span><span class="dt">Numeric.AD</span></code></pre></div>
 <h2 id="cassava">cassava</h2>
 <p>csv data arrives as a bytestring, gets decoded as a Vector, and decoding errors arrive as strings, so there's a fair bit of messiness working with Text Lists.</p>
 <div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Data.Csv</span>
@@ -91,11 +95,6 @@ std r = (\s ss -&gt; sqrt (ss - s**2)) &lt;$&gt; ma r &lt;*&gt; sqma r
 <span class="kw">import </span><span class="dt">Data.Text.Encoding</span> (encodeUtf8Builder)
 <span class="kw">import </span><span class="dt">Data.ByteString.Builder</span> (toLazyByteString)
 <span class="kw">import </span><span class="dt">Data.Vector</span> (<span class="dt">Vector</span>)</code></pre></div>
-<h2 id="pretty-printing">pretty printing</h2>
-<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Formatting</span></code></pre></div>
-<h2 id="chart-unit">chart-unit</h2>
-<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Chart.Unit</span>
-<span class="kw">import </span><span class="dt">Chart.Types</span></code></pre></div>
 <h2 id="data-munge">data munge</h2>
 <p>data is from <a href="https://www.quandl.com/data/YAHOO/INDEX_GSPC-S-P-500-Index">yahoo</a> and consists of the following fields:</p>
 <pre><code>Date,Open,High,Low,Close,Volume,Adjusted Close</code></pre>
@@ -112,8 +111,8 @@ std r = (\s ss -&gt; sqrt (ss - s**2)) &lt;$&gt; ma r &lt;*&gt; sqma r
 
 <span class="kw">instance</span> <span class="dt">FromRecord</span> <span class="dt">YahooRep</span></code></pre></div>
 <p>The base unit for analysis (which I've called ys to abstract) is log(1+return). Returns are geometric by nature, and this premap removes the effect before we get to distributions.</p>
-<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="ot">ys ::</span> [<span class="dt">Double</span>]
-ys <span class="fu">=</span> fmap (\x <span class="ot">-&gt;</span> log (<span class="dv">1</span><span class="fu">+</span>x)) <span class="fu">$</span> ret <span class="fu">$</span> reverse <span class="fu">$</span> unsafeInlineIO <span class="fu">$</span> <span class="kw">do</span>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="ot">vs ::</span> [<span class="dt">Double</span>]
+vs <span class="fu">=</span> fmap (\x <span class="ot">-&gt;</span> log (<span class="dv">1</span><span class="fu">+</span>x)) <span class="fu">$</span> ret <span class="fu">$</span> reverse <span class="fu">$</span> unsafeInlineIO <span class="fu">$</span> <span class="kw">do</span>
     bs <span class="ot">&lt;-</span> readFile <span class="st">&quot;other/YAHOO-INDEX_GSPC.csv&quot;</span>
     <span class="kw">let</span> rawdata <span class="fu">=</span>
             decode <span class="dt">HasHeader</span> (toLazyByteString <span class="fu">$</span> encodeUtf8Builder bs)
@@ -141,11 +140,11 @@ main <span class="fu">=</span> <span class="kw">do</span>
         (rect&#39;
          (chartAxes <span class="fu">.</span> element <span class="dv">0</span> <span class="fu">.</span> axisTickStyle <span class="fu">.~</span> <span class="dt">TickNone</span> <span class="fu">$</span> def)
          [def]
-         ([zipWith4 <span class="dt">V4</span> [<span class="dv">0</span><span class="fu">..</span>] (replicate <span class="dv">2000</span> <span class="dv">0</span>) [<span class="dv">1</span><span class="fu">..</span>] (take <span class="dv">2000</span> ys)]))
+         ([zipWith4 <span class="dt">V4</span> [<span class="dv">0</span><span class="fu">..</span>] (replicate <span class="dv">2000</span> <span class="dv">0</span>) [<span class="dv">1</span><span class="fu">..</span>] (take <span class="dv">2000</span> vs)]))
     fileSvg
         <span class="st">&quot;other/asum.svg&quot;</span> (<span class="dv">300</span>,<span class="dv">300</span>)
         (line def [(<span class="dt">LineConfig</span> <span class="fl">0.002</span> (<span class="dt">Color</span> <span class="fl">0.33</span> <span class="fl">0.33</span> <span class="fl">0.33</span> <span class="fl">0.4</span>))]
-         ([zipWith <span class="dt">V2</span> [<span class="dv">0</span><span class="fu">..</span>] (L.scan L.sum ys)])
+         ([zipWith <span class="dt">V2</span> [<span class="dv">0</span><span class="fu">..</span>] (L.scan L.sum vs)])
          )
     <span class="kw">let</span> fake <span class="fu">=</span> ([<span class="dv">0</span><span class="fu">..</span><span class="dv">100</span>] <span class="fu">&lt;&gt;</span> replicate <span class="dv">101</span> <span class="dv">100</span><span class="ot"> ::</span> [<span class="dt">Double</span>])
     fileSvg <span class="st">&quot;other/av.svg&quot;</span> (<span class="dv">300</span>,<span class="dv">300</span>) <span class="fu">$</span>
@@ -176,11 +175,11 @@ main <span class="fu">=</span> <span class="kw">do</span>
         [ zipWith <span class="dt">V2</span> [<span class="dv">0</span><span class="fu">..</span>] <span class="fu">$</span>
           take <span class="dv">5000</span> <span class="fu">$</span> drop <span class="dv">100</span> <span class="fu">$</span> drop <span class="dv">2</span> <span class="fu">$</span>
           (L.scan (beta <span class="fl">0.99</span>)) <span class="fu">$</span> drop <span class="dv">1</span> <span class="fu">$</span>
-          zip ys (L.scan (ma <span class="fl">0.9975</span>) ys)
+          zip vs (L.scan (ma <span class="fl">0.9975</span>) vs)
         , zipWith <span class="dt">V2</span> [<span class="dv">0</span><span class="fu">..</span>] <span class="fu">$</span>
           take <span class="dv">5000</span> <span class="fu">$</span> drop <span class="dv">100</span> <span class="fu">$</span> drop <span class="dv">2</span> <span class="fu">$</span>
           (L.scan (alpha <span class="fl">0.99</span>)) <span class="fu">$</span> drop <span class="dv">1</span> <span class="fu">$</span>
-          zip ys (L.scan (ma <span class="fl">0.9975</span>) ys)
+          zip vs (L.scan (ma <span class="fl">0.9975</span>) vs)
         ]
     fileSvg <span class="st">&quot;other/cmeane.svg&quot;</span> (<span class="dv">300</span>,<span class="dv">300</span>) <span class="fu">$</span>
         rect&#39; def
@@ -192,10 +191,10 @@ main <span class="fu">=</span> <span class="kw">do</span>
              beta <span class="fl">0.99</span> <span class="fu">&lt;*&gt;</span>
              L.premap snd (ma <span class="fl">0.00001</span>) <span class="fu">&lt;*&gt;</span>
              alpha <span class="fl">0.99</span>)) <span class="fu">$</span>
-           drop <span class="dv">400</span> <span class="fu">$</span> zip ys (L.scan (ma <span class="fl">0.9975</span>) ys)
+           drop <span class="dv">400</span> <span class="fu">$</span> zip vs (L.scan (ma <span class="fl">0.9975</span>) vs)
          , toV4 <span class="fu">$</span> L.fold (hist (rangeCuts <span class="dv">6</span> (<span class="fu">-</span><span class="fl">0.03</span>) <span class="fl">0.03</span>) <span class="dv">1</span>) <span class="fu">$</span>
            take <span class="dv">5000</span> <span class="fu">$</span> drop <span class="dv">100</span> <span class="fu">$</span>
-           ys
+           vs
          ]
 
     fileSvg <span class="st">&quot;other/csqma.svg&quot;</span> (<span class="dv">300</span>,<span class="dv">300</span>) <span class="fu">$</span>
@@ -206,7 +205,7 @@ main <span class="fu">=</span> <span class="kw">do</span>
         (fmap (zipWith <span class="dt">V2</span> [<span class="dv">0</span><span class="fu">..</span>]) <span class="fu">&lt;$&gt;</span> (\x <span class="ot">-&gt;</span> [fst <span class="fu">&lt;$&gt;</span> x, snd <span class="fu">&lt;$&gt;</span> x]) <span class="fu">$</span>
          take <span class="dv">12000</span> <span class="fu">$</span> drop <span class="dv">12000</span> <span class="fu">$</span> drop <span class="dv">2</span> <span class="fu">$</span>
          ( L.scan ((,) <span class="fu">&lt;$&gt;</span> (alpha <span class="fl">0.99</span>) <span class="fu">&lt;*&gt;</span> beta <span class="fl">0.99</span>)) <span class="fu">$</span>
-           drop <span class="dv">100</span> <span class="fu">$</span> zip ((<span class="fu">**</span><span class="dv">2</span>)<span class="fu">&lt;$&gt;</span> ys) (L.scan (sqma <span class="fl">0.9975</span>) ys))
+           drop <span class="dv">100</span> <span class="fu">$</span> zip ((<span class="fu">**</span><span class="dv">2</span>)<span class="fu">&lt;$&gt;</span> vs) (L.scan (sqma <span class="fl">0.9975</span>) vs))
 </code></pre></div>
 <h2 id="basic-stats">basic stats</h2>
 <p>online mean and std at a 0.99 decay rate:</p>
@@ -214,7 +213,7 @@ main <span class="fu">=</span> <span class="kw">do</span>
 <img src="other/moments.svg" />
 
 </div>
-<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell">    <span class="kw">let</span> st <span class="fu">=</span> drop <span class="dv">1</span> <span class="fu">$</span> L.scan ((,) <span class="fu">&lt;$&gt;</span> (ma <span class="fl">0.9</span>) <span class="fu">&lt;*&gt;</span> (std <span class="fl">0.99</span>)) ys
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell">    <span class="kw">let</span> st <span class="fu">=</span> drop <span class="dv">1</span> <span class="fu">$</span> L.scan ((,) <span class="fu">&lt;$&gt;</span> (ma <span class="fl">0.9</span>) <span class="fu">&lt;*&gt;</span> (std <span class="fl">0.99</span>)) vs
     fileSvg <span class="st">&quot;other/moments.svg&quot;</span> (<span class="dv">300</span>,<span class="dv">300</span>) <span class="fu">$</span> (line def [(<span class="dt">LineConfig</span> <span class="fl">0.002</span> (<span class="dt">Color</span> <span class="fl">0.33</span> <span class="fl">0.33</span> <span class="fl">0.33</span> <span class="fl">0.4</span>)), (<span class="dt">LineConfig</span> <span class="fl">0.002</span> (<span class="dt">Color</span> <span class="fl">0.88</span> <span class="fl">0.33</span> <span class="fl">0.12</span> <span class="fl">0.4</span>))] <span class="fu">$</span>
         [ zipWith <span class="dt">V2</span> [<span class="dv">0</span><span class="fu">..</span>] (fst <span class="fu">&lt;$&gt;</span> st)
         , zipWith <span class="dt">V2</span> [<span class="dv">0</span><span class="fu">..</span>] (snd <span class="fu">&lt;$&gt;</span> st)
@@ -225,16 +224,16 @@ main <span class="fu">=</span> <span class="kw">do</span>
 
 </div>
 <div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell">    fileSvg <span class="st">&quot;other/scatter.svg&quot;</span> (<span class="dv">500</span>,<span class="dv">500</span>) <span class="fu">$</span>
-        scatter def [def] <span class="fu">$</span> [drop (length ys <span class="fu">-</span> <span class="dv">1000</span>) <span class="fu">$</span>
-        fmap (<span class="dv">10000</span><span class="fu">*</span>) <span class="fu">&lt;$&gt;</span> L.scan (<span class="dt">V2</span> <span class="fu">&lt;$&gt;</span> (ma <span class="fl">0.99</span>) <span class="fu">&lt;*&gt;</span> (std <span class="fl">0.99</span>)) ys]</code></pre></div>
+        scatter def [def] <span class="fu">$</span> [drop (length vs <span class="fu">-</span> <span class="dv">1000</span>) <span class="fu">$</span>
+        fmap (<span class="dv">10000</span><span class="fu">*</span>) <span class="fu">&lt;$&gt;</span> L.scan (<span class="dt">V2</span> <span class="fu">&lt;$&gt;</span> (ma <span class="fl">0.99</span>) <span class="fu">&lt;*&gt;</span> (std <span class="fl">0.99</span>)) vs]</code></pre></div>
 <p>A histogram with r=0.99 with lifetime stats as the grey background</p>
 <div class="figure">
 <img src="other/hist.svg" />
 
 </div>
 <div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell">    <span class="kw">let</span> cuts <span class="fu">=</span> (rangeCuts <span class="dv">5</span> (<span class="fu">-</span><span class="fl">0.02</span>) <span class="fl">0.02</span>)
-    <span class="kw">let</span> h <span class="fu">=</span> toV4 <span class="fu">$</span> freq <span class="fu">$</span> L.fold (hist cuts <span class="fl">0.99</span>) ys
-    <span class="kw">let</span> h&#39; <span class="fu">=</span> toV4 <span class="fu">$</span> freq <span class="fu">$</span> L.fold (hist cuts <span class="dv">1</span>) ys
+    <span class="kw">let</span> h <span class="fu">=</span> toV4 <span class="fu">$</span> freq <span class="fu">$</span> L.fold (hist cuts <span class="fl">0.99</span>) vs
+    <span class="kw">let</span> h&#39; <span class="fu">=</span> toV4 <span class="fu">$</span> freq <span class="fu">$</span> L.fold (hist cuts <span class="dv">1</span>) vs
     fileSvg <span class="st">&quot;other/hist.svg&quot;</span> (<span class="dv">300</span>,<span class="dv">300</span>) <span class="fu">$</span>
       rect&#39;
       (chartAxes <span class="fu">.~</span> [def] <span class="fu">$</span> def)
@@ -250,19 +249,44 @@ online [min, 10th, 20th, .. 90th, max] with decay rate = 0.996 (one year) -0.033
 <div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell">    writeFile <span class="st">&quot;other/quantiles.md&quot;</span> <span class="fu">$</span>
         <span class="st">&quot;\n    [min, 10th, 20th, .. 90th, max]:&quot;</span> <span class="fu">&lt;&gt;</span>
         mconcat (sformat (<span class="st">&quot; &quot;</span> <span class="fu">%</span> prec <span class="dv">3</span>) <span class="fu">&lt;$&gt;</span> toList
-                 (L.fold (quantiles&#39; <span class="dv">11</span>) ys)) <span class="fu">&lt;&gt;</span>
+                 (L.fold (quantiles&#39; <span class="dv">11</span>) vs)) <span class="fu">&lt;&gt;</span>
         <span class="st">&quot;\n    online [min, 10th, 20th, .. 90th, max] with decay rate = 0.996 (one year)&quot;</span> <span class="fu">&lt;&gt;</span>
         mconcat (sformat (<span class="st">&quot; &quot;</span> <span class="fu">%</span> prec <span class="dv">3</span>) <span class="fu">&lt;$&gt;</span> toList
-                 (L.fold (quantiles <span class="dv">11</span> identity <span class="fl">0.996</span>) ys))</code></pre></div>
+                 (L.fold (quantiles <span class="dv">11</span> identity <span class="fl">0.996</span>) vs))</code></pre></div>
 <h2 id="digitize">digitize</h2>
 <p>A related computation is to output the quantile of each value:</p>
 <pre><code>first 100 values digitized into quantiles: 0.00 0.00 1.00 1.00 1.00 3.00 2.00 2.00 2.00 2.00 2.00 2.00 2.00 1.00 1.00 2.00 2.00 2.00 2.00 2.00 2.00 1.00 1.00 2.00 1.00 2.00 3.00 1.00 2.00 1.00 1.00 1.00 2.00 1.00 1.00 1.00 3.00 1.00 2.00 1.00 1.00 1.00 2.00 1.00 1.00 1.00 1.00 1.00 1.00 1.00 1.00 2.00 2.00 1.00 1.00 2.00 2.00 1.00 2.00 1.00 2.00 1.00 1.00 2.00 1.00 2.00 2.00 1.00 1.00 1.00 1.00 1.00 2.00 2.00 2.00 1.00 1.00 4.00 1.00 2.00 1.00 1.00 2.00 2.00 2.00 4.00 1.00 1.00 3.00 2.00 1.00 4.00 1.00 1.00 4.00 4.00 4.00 1.00 1.00 1.00</code></pre>
 <div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell">    writeFile <span class="st">&quot;other/digitize.md&quot;</span> <span class="fu">$</span>
         <span class="st">&quot;\n    first 100 values digitized into quantiles:&quot;</span> <span class="fu">&lt;&gt;</span>
         mconcat ((sformat (<span class="st">&quot; &quot;</span> <span class="fu">%</span> prec <span class="dv">3</span>) <span class="fu">&lt;$&gt;</span>)
-                 (take <span class="dv">100</span> <span class="fu">$</span> L.scan (digitize <span class="dv">5</span> identity <span class="fl">0.996</span>) ys))
+                 (take <span class="dv">100</span> <span class="fu">$</span> L.scan (digitize <span class="dv">5</span> identity <span class="fl">0.996</span>) vs))
 
     filePng <span class="st">&quot;other/scratchpad.png&quot;</span> (<span class="dv">400</span>,<span class="dv">400</span>) <span class="fu">$</span> line def [def]
-        [zipWith <span class="dt">V2</span> [<span class="dv">0</span><span class="fu">..</span>] (L.scan L.sum ys), zipWith <span class="dt">V2</span> [<span class="dv">0</span><span class="fu">..</span>] ((<span class="dv">2</span><span class="fu">*</span>)<span class="fu">&lt;$&gt;</span>(L.scan L.sum ys))]</code></pre></div>
+        [zipWith <span class="dt">V2</span> [<span class="dv">0</span><span class="fu">..</span>] (L.scan L.sum vs), zipWith <span class="dt">V2</span> [<span class="dv">0</span><span class="fu">..</span>] ((<span class="dv">2</span><span class="fu">*</span>)<span class="fu">&lt;$&gt;</span>(L.scan L.sum vs))]</code></pre></div>
+<h1 id="regression">regression</h1>
+<p><br /><span class="math display">$$\displaystyle L(\boldsymbol{x}, \boldsymbol{y}, m, c) = \frac{1}{2n}\sum_{i=1}^n (y - (mx + c))^2$$</span><br /></p>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="ot">cost ::</span> (<span class="dt">Fractional</span> a, <span class="dt">Num</span> a, <span class="dt">Foldable</span> f, <span class="dt">Applicative</span> f) <span class="ot">=&gt;</span> f a <span class="ot">-&gt;</span> f a <span class="ot">-&gt;</span> f a <span class="ot">-&gt;</span> f (f a) <span class="ot">-&gt;</span> a
+cost ms cs ys xss <span class="fu">=</span> cost&#39;
+  <span class="kw">where</span>
+    cost&#39; <span class="fu">=</span> (<span class="fu">/</span>( fromIntegral <span class="fu">$</span> length ys)) (L.fold L.sum <span class="fu">$</span> abs <span class="fu">&lt;$&gt;</span> es)
+    es <span class="fu">=</span> ys <span class="fu">.-.</span> (L.fold L.sum <span class="fu">&lt;$&gt;</span> (cs <span class="fu">.+</span> (ms <span class="fu">.*</span> xss)))
+
+<span class="ot">(.*) ::</span> (<span class="dt">Num</span> a, <span class="dt">Applicative</span> f) <span class="ot">=&gt;</span> f a <span class="ot">-&gt;</span> f (f a) <span class="ot">-&gt;</span> f (f a)
+(<span class="fu">.*</span>) ms xss <span class="fu">=</span> (\xs <span class="ot">-&gt;</span> ms <span class="fu">.*.</span> xs) <span class="fu">&lt;$&gt;</span> xss
+
+<span class="ot">(.+) ::</span> (<span class="dt">Num</span> a, <span class="dt">Applicative</span> f) <span class="ot">=&gt;</span> f a <span class="ot">-&gt;</span> f (f a) <span class="ot">-&gt;</span> f (f a)
+(<span class="fu">.+</span>) ms xss <span class="fu">=</span> (\xs <span class="ot">-&gt;</span> ms <span class="fu">.+.</span> xs) <span class="fu">&lt;$&gt;</span> xss
+
+<span class="ot">(.+.) ::</span> (<span class="dt">Num</span> a, <span class="dt">Applicative</span> f) <span class="ot">=&gt;</span> f a <span class="ot">-&gt;</span> f a <span class="ot">-&gt;</span> f a
+(<span class="fu">.+.</span>) xs xs&#39; <span class="fu">=</span> (<span class="fu">+</span>) <span class="fu">&lt;$&gt;</span> xs <span class="fu">&lt;*&gt;</span> xs&#39;
+
+<span class="ot">(.-.) ::</span> (<span class="dt">Num</span> a, <span class="dt">Applicative</span> f) <span class="ot">=&gt;</span> f a <span class="ot">-&gt;</span> f a <span class="ot">-&gt;</span> f a
+(<span class="fu">.-.</span>) xs xs&#39; <span class="fu">=</span> (<span class="fu">-</span>) <span class="fu">&lt;$&gt;</span> xs <span class="fu">&lt;*&gt;</span> xs&#39;
+
+<span class="ot">(.*.) ::</span> (<span class="dt">Num</span> a, <span class="dt">Applicative</span> f) <span class="ot">=&gt;</span> f a <span class="ot">-&gt;</span> f a <span class="ot">-&gt;</span> f a
+(<span class="fu">.*.</span>) xs xs&#39; <span class="fu">=</span> (<span class="fu">+</span>) <span class="fu">&lt;$&gt;</span> xs <span class="fu">&lt;*&gt;</span> xs&#39;
+
+
+g m c <span class="fu">=</span> cost [m] [c] (drop <span class="dv">1</span> vs) [(drop <span class="dv">1</span> <span class="fu">$</span> L.scan (ma <span class="fl">0.99</span>) vs)]</code></pre></div>
 <h2 id="workflow">workflow</h2>
 <pre><code>stack install &amp;&amp; readme &amp;&amp; pandoc -f markdown+lhs -t html -i readme.lhs -o index.html --filter pandoc-include</code></pre>

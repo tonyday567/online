@@ -109,6 +109,7 @@ and where to from here ...
 Code
 ===
 
+> {-# OPTIONS_GHC -fno-warn-type-defaults #-}
 > import Protolude hiding ((%))
 > import Control.Monad.Primitive (unsafeInlineIO)
 > import Online
@@ -119,7 +120,16 @@ Code
 > import qualified Control.Foldl as L
 > import Linear hiding (identity)
 > import Data.List
->
+> -- import Pipes
+> -- import qualified Pipes.Prelude
+> import Formatting
+> import Numeric.AD
+> import qualified Data.ListLike as List
+> import Numeric.AD.Internal.Sparse hiding (pack)
+> import Numeric.AD.Jet
+> import Numeric.AD.Mode.Reverse
+> import Data.Reflection
+> import Numeric.AD.Internal.Reverse
 
 cassava
 ---
@@ -132,17 +142,6 @@ csv data arrives as a bytestring, gets decoded as a Vector, and decoding errors 
 > import Data.Text.Encoding (encodeUtf8Builder)
 > import Data.ByteString.Builder (toLazyByteString)
 > import Data.Vector (Vector)
-
-pretty printing
----
-
-> import Formatting
-
-chart-unit
----
-
-> import Chart.Unit
-> import Chart.Types
 
 data munge
 ---
@@ -167,8 +166,8 @@ Stats are soley on adjusted close.
 
 The base unit for analysis (which I've called ys to abstract) is log(1+return).  Returns are geometric by nature, and this premap removes the effect before we get to distributions.
 
-> ys :: [Double]
-> ys = fmap (\x -> log (1+x)) $ ret $ reverse $ unsafeInlineIO $ do
+> vs :: [Double]
+> vs = fmap (\x -> log (1+x)) $ ret $ reverse $ unsafeInlineIO $ do
 >     bs <- readFile "other/YAHOO-INDEX_GSPC.csv"
 >     let rawdata =
 >             decode HasHeader (toLazyByteString $ encodeUtf8Builder bs)
@@ -180,9 +179,9 @@ The base unit for analysis (which I've called ys to abstract) is log(1+return). 
 > ret :: [Double] -> [Double]
 > ret [] = []
 > ret [_] = []
-> ret xs = L.fold diff' xs
+> ret xs = L.fold dif xs
 >     where
->         diff' = L.Fold step ([], Nothing) fst
+>         dif = L.Fold step ([], Nothing) fst
 >         step x a = case snd x of
 >             Nothing -> ([], Just a)
 >             Just a' -> ((a-a')/a':fst x, Just a)
@@ -202,11 +201,11 @@ Think ipython notebook style without the fancy.
 >         (rect'
 >          (chartAxes . element 0 . axisTickStyle .~ TickNone $ def)
 >          [def]
->          ([zipWith4 V4 [0..] (replicate 2000 0) [1..] (take 2000 ys)]))
+>          ([zipWith4 V4 [0..] (replicate 2000 0) [1..] (take 2000 vs)]))
 >     fileSvg
 >         "other/asum.svg" (300,300)
 >         (line def [(LineConfig 0.002 (Color 0.33 0.33 0.33 0.4))]
->          ([zipWith V2 [0..] (L.scan L.sum ys)])
+>          ([zipWith V2 [0..] (L.scan L.sum vs)])
 >          )
 >     let fake = ([0..100] <> replicate 101 100 :: [Double])
 >     fileSvg "other/av.svg" (300,300) $
@@ -237,11 +236,11 @@ Think ipython notebook style without the fancy.
 >         [ zipWith V2 [0..] $
 >           take 5000 $ drop 100 $ drop 2 $
 >           (L.scan (beta 0.99)) $ drop 1 $
->           zip ys (L.scan (ma 0.9975) ys)
+>           zip vs (L.scan (ma 0.9975) vs)
 >         , zipWith V2 [0..] $
 >           take 5000 $ drop 100 $ drop 2 $
 >           (L.scan (alpha 0.99)) $ drop 1 $
->           zip ys (L.scan (ma 0.9975) ys)
+>           zip vs (L.scan (ma 0.9975) vs)
 >         ]
 >     fileSvg "other/cmeane.svg" (300,300) $
 >         rect' def
@@ -253,10 +252,10 @@ Think ipython notebook style without the fancy.
 >              beta 0.99 <*>
 >              L.premap snd (ma 0.00001) <*>
 >              alpha 0.99)) $
->            drop 400 $ zip ys (L.scan (ma 0.9975) ys)
+>            drop 400 $ zip vs (L.scan (ma 0.9975) vs)
 >          , toV4 $ L.fold (hist (rangeCuts 6 (-0.03) 0.03) 1) $
 >            take 5000 $ drop 100 $
->            ys
+>            vs
 >          ]
 >
 >     fileSvg "other/csqma.svg" (300,300) $
@@ -267,7 +266,7 @@ Think ipython notebook style without the fancy.
 >         (fmap (zipWith V2 [0..]) <$> (\x -> [fst <$> x, snd <$> x]) $
 >          take 12000 $ drop 12000 $ drop 2 $
 >          ( L.scan ((,) <$> (alpha 0.99) <*> beta 0.99)) $
->            drop 100 $ zip ((**2)<$> ys) (L.scan (sqma 0.9975) ys))
+>            drop 100 $ zip ((**2)<$> vs) (L.scan (sqma 0.9975) vs))
 >
 >
 
@@ -278,7 +277,7 @@ online mean and std at a 0.99 decay rate:
 
 ![](other/moments.svg)
 
->     let st = drop 1 $ L.scan ((,) <$> (ma 0.9) <*> (std 0.99)) ys
+>     let st = drop 1 $ L.scan ((,) <$> (ma 0.9) <*> (std 0.99)) vs
 >     fileSvg "other/moments.svg" (300,300) $ (line def [(LineConfig 0.002 (Color 0.33 0.33 0.33 0.4)), (LineConfig 0.002 (Color 0.88 0.33 0.12 0.4))] $
 >         [ zipWith V2 [0..] (fst <$> st)
 >         , zipWith V2 [0..] (snd <$> st)
@@ -289,8 +288,8 @@ scan of 1000 recent ma 0.99 and std 0.99, in basis points, rendered as a scatter
 ![](other/scatter.svg)
 
 >     fileSvg "other/scatter.svg" (500,500) $
->         scatter def [def] $ [drop (length ys - 1000) $
->         fmap (10000*) <$> L.scan (V2 <$> (ma 0.99) <*> (std 0.99)) ys]
+>         scatter def [def] $ [drop (length vs - 1000) $
+>         fmap (10000*) <$> L.scan (V2 <$> (ma 0.99) <*> (std 0.99)) vs]
 
 
 A histogram with r=0.99 with lifetime stats as the grey background
@@ -298,8 +297,8 @@ A histogram with r=0.99 with lifetime stats as the grey background
 ![](other/hist.svg)
 
 >     let cuts = (rangeCuts 5 (-0.02) 0.02)
->     let h = toV4 $ freq $ L.fold (hist cuts 0.99) ys
->     let h' = toV4 $ freq $ L.fold (hist cuts 1) ys
+>     let h = toV4 $ freq $ L.fold (hist cuts 0.99) vs
+>     let h' = toV4 $ freq $ L.fold (hist cuts 1) vs
 >     fileSvg "other/hist.svg" (300,300) $
 >       rect'
 >       (chartAxes .~ [def] $ def)
@@ -322,10 +321,10 @@ other/quantiles.md
 >     writeFile "other/quantiles.md" $
 >         "\n    [min, 10th, 20th, .. 90th, max]:" <>
 >         mconcat (sformat (" " % prec 3) <$> toList
->                  (L.fold (quantiles' 11) ys)) <>
+>                  (L.fold (quantiles' 11) vs)) <>
 >         "\n    online [min, 10th, 20th, .. 90th, max] with decay rate = 0.996 (one year)" <>
 >         mconcat (sformat (" " % prec 3) <$> toList
->                  (L.fold (quantiles 11 identity 0.996) ys))
+>                  (L.fold (quantiles 11 identity 0.996) vs))
 
 digitize
 ---
@@ -339,13 +338,60 @@ other/digitize.md
 >     writeFile "other/digitize.md" $
 >         "\n    first 100 values digitized into quantiles:" <>
 >         mconcat ((sformat (" " % prec 3) <$>)
->                  (take 100 $ L.scan (digitize 5 identity 0.996) ys))
+>                  (take 100 $ L.scan (digitize 5 identity 0.996) vs))
 >
 >     filePng "other/scratchpad.png" (400,400) $ line def [def]
->         [zipWith V2 [0..] (L.scan L.sum ys), zipWith V2 [0..] ((2*)<$>(L.scan L.sum ys))]
+>         [zipWith V2 [0..] (L.scan L.sum vs), zipWith V2 [0..] ((2*)<$>(L.scan L.sum vs))]
+
+
+regression
+===
+
+$$\displaystyle L(\boldsymbol{x}, \boldsymbol{y}, m, c) = \frac{1}{2n}\sum_{i=1}^n (y - (mx + c))^2$$
+
+> cost_ ::
+>     ( List.ListLike (f a) a
+>     , Fractional a
+>     , Foldable f
+>     , Applicative f) =>
+>     f a -> f a -> f a -> f (f a) -> a
+> cost_ ms c ys xss = av
+>   where
+>     av = (/( fromIntegral $ length ys)) (L.fold L.sum $ abs <$> es)
+>     es = ys .-. (L.fold L.sum <$> (c .+ (ms .* xss)))
+>
+>
+> (.*) :: (Num a, Applicative f) => f a -> f (f a) -> f (f a)
+> (.*) ms xss = ((<$>) . (*)) <$> ms <*> xss
+>
+> (.+) :: (Num a, Applicative f) => f a -> f (f a) -> f (f a)
+> (.+) ms xss = ((<$>) . (+)) <$> ms <*> xss
+>
+> (.-.) :: (List.ListLike (f a) a, Num a) => f a -> f a -> f a
+> (.-.) xs xs' = List.zipWith (-) xs xs'
+>
+
+[ad types](http://stackoverflow.com/questions/11654168/acceptable-types-in-numeric-ad-functions)
+
+
+> costD :: Double -> Double -> Double
+> costD m c = cost_ [m] [c] (drop 1 vs) [(drop 1 $ L.scan (ma 0.99) vs)]
+>
+> costF :: (AD s Double) -> (AD s Double) -> AD s Double
+> costF m c = cost_ [m] [c] (auto <$> drop 1 vs) [(fmap auto <$> drop 1 $ L.scan (ma 0.99) vs)]
+>
+> costS :: (AD s (Sparse Double)) -> (AD s (Sparse Double)) -> AD s (Sparse Double)
+> costS m c = cost_ [m] [c] (auto <$> drop 1 vs) [(fmap auto <$> drop 1 $ L.scan (ma 0.99) vs)]
+>
+> costR :: (Reifies s Tape) => (Reverse s Double) -> (Reverse s Double) ->  (Reverse s Double)
+> costR m c = cost_ [m] [c] (auto <$> drop 1 vs) [(fmap auto <$> drop 1 $ L.scan (ma 0.99) vs)]
+>
+> cost :: forall a. (Scalar a ~ Double, Mode a, Fractional a) => a -> a -> a
+> cost m c = cost_ [m] [c] (auto <$> drop 1 vs) [(fmap auto <$> drop 1 $ L.scan (ma 0.99) vs)]
+
+
 
 workflow
 ---
 
     stack install && readme && pandoc -f markdown+lhs -t html -i readme.lhs -o index.html --filter pandoc-include
-
