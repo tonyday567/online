@@ -112,7 +112,8 @@ executable readme
     pipes,
     ad,
     ListLike,
-    reflection
+    reflection,
+    diagrams-lib
   default-extensions:
     NoImplicitPrelude,
     UnicodeSyntax,

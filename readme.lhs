@@ -109,14 +109,15 @@ and where to from here ...
 Code
 ===
 
+> {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 > {-# OPTIONS_GHC -fno-warn-type-defaults #-}
-> import Protolude hiding ((%))
+> import Protolude hiding ((%), (&))
 > import Control.Monad.Primitive (unsafeInlineIO)
-> import Online
+> import Online hiding (p2)
 > import Chart.Unit
 > import Chart.Types
 > import Data.Default
-> import Control.Lens
+> import Control.Lens hiding ((#))
 > import qualified Control.Foldl as L
 > import Linear hiding (identity)
 > import Data.List
@@ -130,6 +131,7 @@ Code
 > import Numeric.AD.Mode.Reverse
 > import Data.Reflection
 > import Numeric.AD.Internal.Reverse
+> import Diagrams.Prelude hiding (Vector, (.-), (.-.))
 
 cassava
 ---
@@ -268,6 +270,7 @@ Think ipython notebook style without the fancy.
 >          ( L.scan ((,) <$> (alpha 0.99) <*> beta 0.99)) $
 >            drop 100 $ zip ((**2)<$> vs) (L.scan (sqma 0.9975) vs))
 >
+>     fileSvg "other/ex2.svg" (300,300) (ex2 # pad 1.1)
 >
 
 basic stats
@@ -369,25 +372,177 @@ $$\displaystyle L(\boldsymbol{x}, \boldsymbol{y}, m, c) = \frac{1}{2n}\sum_{i=1}
 >
 > (.-.) :: (List.ListLike (f a) a, Num a) => f a -> f a -> f a
 > (.-.) xs xs' = List.zipWith (-) xs xs'
+> 
+> (.+.) :: (List.ListLike (f a) a, Num a) => f a -> f a -> f a
+> (.+.) xs xs' = List.zipWith (+) xs xs'
 >
 
 [ad types](http://stackoverflow.com/questions/11654168/acceptable-types-in-numeric-ad-functions)
 
 
 > costD :: Double -> Double -> Double
-> costD m c = cost_ [m] [c] (drop 1 vs) [(drop 1 $ L.scan (ma 0.99) vs)]
+> costD m c = cost_ [m] [c] (drop 2 vs) [(drop 1 $ L.scan (ma 0.99) vs)]
 >
 > costF :: (AD s Double) -> (AD s Double) -> AD s Double
-> costF m c = cost_ [m] [c] (auto <$> drop 1 vs) [(fmap auto <$> drop 1 $ L.scan (ma 0.99) vs)]
+> costF m c = cost_ [m] [c] (auto <$> drop 2 vs) [(fmap auto <$> drop 1 $ L.scan (ma 0.99) vs)]
 >
 > costS :: (AD s (Sparse Double)) -> (AD s (Sparse Double)) -> AD s (Sparse Double)
-> costS m c = cost_ [m] [c] (auto <$> drop 1 vs) [(fmap auto <$> drop 1 $ L.scan (ma 0.99) vs)]
+> costS m c = cost_ [m] [c] (auto <$> drop 2 vs) [(fmap auto <$> drop 1 $ L.scan (ma 0.99) vs)]
 >
 > costR :: (Reifies s Tape) => (Reverse s Double) -> (Reverse s Double) ->  (Reverse s Double)
-> costR m c = cost_ [m] [c] (auto <$> drop 1 vs) [(fmap auto <$> drop 1 $ L.scan (ma 0.99) vs)]
+> costR m c = cost_ [m] [c] (auto <$> drop 2 vs) [(fmap auto <$> drop 1 $ L.scan (ma 0.99) vs)]
 >
 > cost :: forall a. (Scalar a ~ Double, Mode a, Fractional a) => a -> a -> a
-> cost m c = cost_ [m] [c] (auto <$> drop 1 vs) [(fmap auto <$> drop 1 $ L.scan (ma 0.99) vs)]
+> cost m c = cost_ [m] [c] (auto <$> drop 2 vs) [(fmap auto <$> drop 1 $ L.scan (ma 0.99) vs)]
+
+> costD' :: [Double] -> Double
+> costD' (m:c:_) = cost_ [m] [c] (drop 2 vs) [(drop 1 $ L.scan (ma 0.99) vs)]
+>
+> costF' :: [AD s Double] -> AD s Double
+> costF' (m:c:_) = cost_ [m] [c] (auto <$> drop 2 vs) [(fmap auto <$> drop 1 $ L.scan (ma 0.99) vs)]
+>
+> costS' :: [(AD s (Sparse Double))] -> AD s (Sparse Double)
+> costS' (m:c:_) = cost_ [m] [c] (auto <$> drop 2 vs) [(fmap auto <$> drop 1 $ L.scan (ma 0.99) vs)]
+>
+> costR' :: (Reifies s Tape) => [(Reverse s Double)] -> (Reverse s Double)
+> costR' (m:c:_) = cost_ [m] [c] (auto <$> drop 2 vs) [(fmap auto <$> drop 1 $ L.scan (ma 0.99) vs)]
+>
+> cost' :: forall a. (Scalar a ~ Double, Mode a, Fractional a) => [a] -> a
+> cost' (m:c:_) = cost_ [m] [c] (auto <$> drop 2 vs) [(fmap auto <$> drop 1 $ L.scan (ma 0.99) vs)]
+
+
+> costR'' :: forall a. (Mode a, Fractional (Scalar a), Fractional a) => [Scalar a] -> [a] -> a
+> costR'' vs' (m:c:_) = cost_ [m] [c] (auto <$> drop 2 vs') [(fmap auto <$> drop 1 $ L.scan (ma 0.99) vs')]
+
+> converge :: (Ord a, Num a) => a -> Int -> [[a]] -> Maybe [a]
+> converge _ _ [] = Nothing
+> converge epsilon n (x:xs) = Just $ go x xs (0::Int)
+>   where
+>     go x [] _ = x
+>     go x (x':xs) i
+>         | dist x x' < epsilon = x'
+>         | i >= n = x'
+>         | otherwise = go x' xs (i+1)
+>     dist a b = L.fold L.sum $ abs <$> zipWith (-) a b
+
+> untilConverged' :: (Ord a, Num a) => a -> Int -> [[a]] -> [[a]]
+> untilConverged' _ _ [] = []
+> untilConverged' epsilon n (x:xs) = go x xs (0::Int) []
+>   where
+>     go x [] _ res = res
+>     go x (x':xs) i res
+>         | dist x x' < epsilon = reverse res
+>         | i >= n = reverse res
+>         | otherwise = go x' xs (i+1) (x':res)
+>     dist a b = L.fold L.sum $ abs <$> zipWith (-) a b
+
+> until :: (a -> a -> Bool) -> Int -> [a] -> [a]
+> until _ _ [] = []
+> until pred n (x:xs) = go x xs (0::Int) []
+>   where
+>     go _ [] _ res = res
+>     go x (x':xs) i res
+>         | pred x x' = reverse res
+>         | i >= n = reverse res
+>         | otherwise = go x' xs (i+1) (x':res)
+>
+> untilConverged :: (Ord a, Num a) => a -> Int -> [[a]] -> [[a]]
+> untilConverged _ _ [] = []
+> untilConverged epsilon n xs = until
+>   (\a b -> (L.fold L.sum $ abs <$> zipWith (-) a b) < epsilon)
+>   n
+>   xs
+
+
+
+
+
+> grid :: forall b. (Fractional b, Enum b) => Range b -> b -> [b]
+> grid (Range (x,x')) steps = (\a -> x + (x'-x)/steps * a) <$> [0..steps]
+> locs :: forall t. Range Double -> t -> Double -> [(Double, Double)]
+> locs rx ry steps = [(x, y) | x <- grid rx steps, y <- grid rx steps] :: [(Double,Double)]
+> dir ::
+>     (forall s. (Reifies s Tape) => [(Reverse s Double)] -> (Reverse s Double)) ->
+>     Double ->
+>     (Double, Double) ->
+>     V2 Double
+> dir f step (x, y) =
+>     - r2 ((\[x,y] -> (x,y)) $
+>           gradWith (\x x' -> x + (x' - x) * step) f $ [x,y])
+>
+> arrowAtPoint ::
+>     forall b. Renderable (Path V2 Double) b =>
+>     (forall s. (Reifies s Tape) => [(Reverse s Double)] -> (Reverse s Double)) ->
+>     Double ->
+>     Double ->
+>     (Double, Double) ->
+>     QDiagram b V2 Double Any
+> arrowAtPoint f step mag (x, y) =
+>     arrowAt' opts (p2 (x, y)) (sL *^ vf) # alignTL
+>   where
+>     vf   = dir f step (x, y)
+>     m    = mag * (norm $ dir f step (x, y))
+>
+>     -- Head size is a function of the length of the vector
+>     -- as are tail size and shaft length.
+>     hs   = 0.02 * m
+>     sW   = 0.01 * m
+>     sL   = 0.01 + 0.1 * m
+>     opts = (with & arrowHead .~ tri & headLength .~ global hs & shaftStyle %~ lwG sW)
+> 
+> makeArrowChart ::
+>     (Renderable (Path V2 Double) b0) =>
+>     (forall s. (Reifies s Tape) => [(Reverse s Double)] -> (Reverse s Double)) ->
+>     Double ->
+>     Double ->
+>     [(Double,Double)] ->
+>     QDiagram b0 V2 Double Any
+> makeArrowChart f step mag l = position $ zip (fmap p2 l) (fmap (arrowAtPoint f step mag) l)
+> 
+> ex1 :: (Renderable (Path V2 Double) b) => QDiagram b V2 Double Any
+> ex1 = makeArrowChart costR' 0.01 1 (locs (Range (-0.1, 0.1)) (Range (-0.1, 0.1)) 10)
+>
+> ex2 :: (Renderable (Path V2 Double) b0) => QDiagram b0 V2 Double Any
+> ex2 = makeArrowChart t1 0.01 1 (locs (Range (-0.1, 0.1)) (Range (-0.1, 0.1)) 10)
+>
+>
+> ex3 :: (Renderable (Path V2 Double) b0) => QDiagram b0 V2 Double Any
+> ex3 = makeArrowChart rosenbrock 0.01 1 (locs (Range (-0.1, 0.1)) (Range (-0.1, 0.1)) 10)
+>
+> rosenbrock [x,y] = 100 * (y - x^2)^2 + (x - 1)^2
+>
+
+$$dx=A(x)dt+√​σ(t)​​​B(x)dW where W∼p?$$
+
+
+> -- fileSvg "other/arrows.svg" (300,300) (example (Range ((-0.001), 0.001)) (Range ((-0.00000000001), 0.00000000001)) 10 0.1 # pad 1.1)
+
+> extrap :: (Double, [Double]) -> (Double, [Double])
+> extrap (eta0, x0) = expand eta0 x0
+>   where
+>     (res0,_) = grad' costR' x0
+>     contract eta x
+>         | res' < res0 = (eta, x')
+>         | otherwise = contract (eta/2) x'
+>       where
+>         x' :: [Double]
+>         x' = x .-. ((eta *) <$> g)
+>         (_,g) = grad' costR' x
+>         (res',_) = grad' costR' x'
+>     expand eta x
+>         | res' < res0 = expand (eta*2) x'
+>         | otherwise = contract (eta/2) x
+>       where
+>         x' :: [Double]
+>         x' = x .-. ((eta *) <$> g)
+>         (_,g) = grad' costR' x
+>         (res',_) = grad' costR' x'
+>       
+>       
+
+> -- The function to use to create the vector field.
+> t1 :: (Reifies s Tape) => [(Reverse s Double)] -> (Reverse s Double)
+> t1 [x,y] = sin (y + 1) * sin (x + 1)
 
 
 
