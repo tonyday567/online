@@ -7,7 +7,10 @@ resolver: lts-7.3
 # Local packages, usually specified by relative directory name
 packages:
 - '.'
-- '../chart-unit'
+- location:
+    git: https://github.com/tonyday567/chart-unit.git
+    commit: 78835a5e462d4f99cc42979a520853b02edd0aca
+  extra-dep: true
 
 # Packages to be pulled from upstream that are not in the resolver (e.g., acme-missiles-0.3)
 extra-deps: []

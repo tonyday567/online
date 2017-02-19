@@ -148,6 +148,11 @@ csv data arrives as a bytestring, gets decoded as a Vector, and decoding errors 
 data munge
 ---
 
+todo:
+---
+
+https://github.com/pvdbrand/quandl-api
+
 data is from [yahoo](https://www.quandl.com/data/YAHOO/INDEX_GSPC-S-P-500-Index) and consists of the following fields:
 
     Date,Open,High,Low,Close,Volume,Adjusted Close
@@ -200,18 +205,18 @@ Think ipython notebook style without the fancy.
 > main :: IO ()
 > main = do
 >     fileSvg "other/elems.svg" (300,300)
->         (rect'
+>         (unitRect
 >          (chartAxes . element 0 . axisTickStyle .~ TickNone $ def)
 >          [def]
 >          ([zipWith4 V4 [0..] (replicate 2000 0) [1..] (take 2000 vs)]))
 >     fileSvg
 >         "other/asum.svg" (300,300)
->         (line def [(LineConfig 0.002 (Color 0.33 0.33 0.33 0.4))]
+>         (unitLine def [(LineConfig 0.002 (Color 0.33 0.33 0.33 0.4))]
 >          ([zipWith V2 [0..] (L.scan L.sum vs)])
 >          )
 >     let fake = ([0..100] <> replicate 101 100 :: [Double])
 >     fileSvg "other/av.svg" (300,300) $
->         line def
+>         unitLine def
 >         [ LineConfig 0.005 (Color 0.88 0.33 0.12 1)
 >         , LineConfig 0.005 (Color 0.12 0.33 0.83 1)
 >         , LineConfig 0.002 (Color 0.33 0.33 0.33 1)
@@ -221,7 +226,7 @@ Think ipython notebook style without the fancy.
 >         , zipWith V2 [0..] fake
 >         ]
 >     fileSvg "other/std.svg" (300,300) $
->         line def
+>         unitLine def
 >         [ LineConfig 0.005 (Color 0.88 0.33 0.12 1)
 >         , LineConfig 0.005 (Color 0.12 0.33 0.83 1)
 >         , LineConfig 0.002 (Color 0.33 0.33 0.33 1)
@@ -231,7 +236,7 @@ Think ipython notebook style without the fancy.
 >         , zipWith V2 [0..] fake
 >         ]
 >     fileSvg "other/cmean.svg" (300,300) $
->         line def
+>         unitLine def
 >         [ LineConfig 0.002 (Color 0.88 0.33 0.12 1)
 >         , LineConfig 0.002 (Color 0.12 0.33 0.83 1)
 >         ]
@@ -245,7 +250,7 @@ Think ipython notebook style without the fancy.
 >           zip vs (L.scan (ma 0.9975) vs)
 >         ]
 >     fileSvg "other/cmeane.svg" (300,300) $
->         rect' def
+>         unitRect def
 >         [def, RectConfig 0 (Color 0.88 0.33 0.12 0) (Color 0.33 0.33 0.12 0.3)]
 >         [ toV4 $ L.fold (hist (rangeCuts 6 (-0.03) 0.03) 1) $
 >           take 5000 $ drop 100 $
@@ -261,7 +266,7 @@ Think ipython notebook style without the fancy.
 >          ]
 >
 >     fileSvg "other/csqma.svg" (300,300) $
->         line def
+>         unitLine def
 >         [ LineConfig 0.002 (Color 0.88 0.33 0.12 1)
 >         , LineConfig 0.002 (Color 0.12 0.33 0.83 1)
 >         ]
@@ -281,7 +286,7 @@ online mean and std at a 0.99 decay rate:
 ![](other/moments.svg)
 
 >     let st = drop 1 $ L.scan ((,) <$> (ma 0.9) <*> (std 0.99)) vs
->     fileSvg "other/moments.svg" (300,300) $ (line def [(LineConfig 0.002 (Color 0.33 0.33 0.33 0.4)), (LineConfig 0.002 (Color 0.88 0.33 0.12 0.4))] $
+>     fileSvg "other/moments.svg" (300,300) $ (unitLine def [(LineConfig 0.002 (Color 0.33 0.33 0.33 0.4)), (LineConfig 0.002 (Color 0.88 0.33 0.12 0.4))] $
 >         [ zipWith V2 [0..] (fst <$> st)
 >         , zipWith V2 [0..] (snd <$> st)
 >         ])
@@ -291,7 +296,7 @@ scan of 1000 recent ma 0.99 and std 0.99, in basis points, rendered as a scatter
 ![](other/scatter.svg)
 
 >     fileSvg "other/scatter.svg" (500,500) $
->         scatter def [def] $ [drop (length vs - 1000) $
+>         unitScatter def [def] $ [drop (length vs - 1000) $
 >         fmap (10000*) <$> L.scan (V2 <$> (ma 0.99) <*> (std 0.99)) vs]
 
 
@@ -303,7 +308,7 @@ A histogram with r=0.99 with lifetime stats as the grey background
 >     let h = toV4 $ freq $ L.fold (hist cuts 0.99) vs
 >     let h' = toV4 $ freq $ L.fold (hist cuts 1) vs
 >     fileSvg "other/hist.svg" (300,300) $
->       rect'
+>       unitRect
 >       (chartAxes .~ [def] $ def)
 >       [def, rectBorderColor .~ Color 0 0 0 0
 >       $ rectColor .~ Color 0.333 0.333 0.333 0.1
@@ -343,7 +348,7 @@ other/digitize.md
 >         mconcat ((sformat (" " % prec 3) <$>)
 >                  (take 100 $ L.scan (digitize 5 identity 0.996) vs))
 >
->     filePng "other/scratchpad.png" (400,400) $ line def [def]
+>     filePng "other/scratchpad.png" (400,400) $ unitLine def [def]
 >         [zipWith V2 [0..] (L.scan L.sum vs), zipWith V2 [0..] ((2*)<$>(L.scan L.sum vs))]
 
 
@@ -453,10 +458,6 @@ $$\displaystyle L(\boldsymbol{x}, \boldsymbol{y}, m, c) = \frac{1}{2n}\sum_{i=1}
 >   n
 >   xs
 
-
-
-
-
 > grid :: forall b. (Fractional b, Enum b) => Range b -> b -> [b]
 > grid (Range (x,x')) steps = (\a -> x + (x'-x)/steps * a) <$> [0..steps]
 > locs :: forall t. Range Double -> t -> Double -> [(Double, Double)]
@@ -544,9 +545,12 @@ $$dx=A(x)dt+√​σ(t)​​​B(x)dW where W∼p?$$
 > t1 :: (Reifies s Tape) => [(Reverse s Double)] -> (Reverse s Double)
 > t1 [x,y] = sin (y + 1) * sin (x + 1)
 
-
-
 workflow
 ---
 
     stack install && readme && pandoc -f markdown+lhs -t html -i readme.lhs -o index.html --filter pandoc-include
+
+todo
+---
+
+https://www.quandl.com/data/YAHOO/INDEX_FVX-Treasury-Yield-5-Years-Index
