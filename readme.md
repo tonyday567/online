@@ -130,16 +130,29 @@ Code
 ====
 
 ``` {.sourceCode .literate .haskell}
-import Tower.Prelude hiding ((%))
+{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
+{-# OPTIONS_GHC -fno-warn-type-defaults #-}
+import Protolude hiding ((%), (&))
 import Control.Monad.Primitive (unsafeInlineIO)
-import Online
+import Online hiding (p2)
 import Chart.Unit
 import Chart.Types
 import Data.Default
-import Control.Lens
+import Control.Lens hiding ((#))
 import qualified Control.Foldl as L
 import Linear hiding (identity)
 import Data.List
+-- import Pipes
+-- import qualified Pipes.Prelude
+import Formatting
+import Numeric.AD
+import qualified Data.ListLike as List
+import Numeric.AD.Internal.Sparse hiding (pack)
+import Numeric.AD.Jet
+import Numeric.AD.Mode.Reverse
+import Data.Reflection
+import Numeric.AD.Internal.Reverse
+import Diagrams.Prelude hiding (Vector, (.-), (.-.))
 ```
 
 cassava
@@ -158,23 +171,13 @@ import Data.ByteString.Builder (toLazyByteString)
 import Data.Vector (Vector)
 ```
 
-pretty printing
----------------
-
-``` {.sourceCode .literate .haskell}
-import Formatting
-```
-
-chart-unit
-----------
-
-``` {.sourceCode .literate .haskell}
-import Chart.Unit
-import Chart.Types
-```
-
 data munge
 ----------
+
+todo:
+-----
+
+https://github.com/pvdbrand/quandl-api
 
 data is from
 [yahoo](https://www.quandl.com/data/YAHOO/INDEX_GSPC-S-P-500-Index) and
@@ -203,8 +206,8 @@ log(1+return). Returns are geometric by nature, and this premap removes
 the effect before we get to distributions.
 
 ``` {.sourceCode .literate .haskell}
-ys :: [Double]
-ys = fmap (\x -> log (1+x)) $ ret $ reverse $ unsafeInlineIO $ do
+vs :: [Double]
+vs = fmap (\x -> log (1+x)) $ ret $ reverse $ unsafeInlineIO $ do
     bs <- readFile "other/YAHOO-INDEX_GSPC.csv"
     let rawdata =
             decode HasHeader (toLazyByteString $ encodeUtf8Builder bs)
@@ -216,9 +219,9 @@ ys = fmap (\x -> log (1+x)) $ ret $ reverse $ unsafeInlineIO $ do
 ret :: [Double] -> [Double]
 ret [] = []
 ret [_] = []
-ret xs = L.fold diff' xs
+ret xs = L.fold dif xs
     where
-        diff' = L.Fold step ([], Nothing) fst
+        dif = L.Fold step ([], Nothing) fst
         step x a = case snd x of
             Nothing -> ([], Just a)
             Just a' -> ((a-a')/a':fst x, Just a)
@@ -238,28 +241,28 @@ Think ipython notebook style without the fancy.
 main :: IO ()
 main = do
     fileSvg "other/elems.svg" (300,300)
-        (rect'
+        (unitRect
          (chartAxes . element 0 . axisTickStyle .~ TickNone $ def)
          [def]
-         ([zipWith4 V4 [0..] (replicate 2000 0) [1..] (take 2000 ys)]))
+         ([zipWith4 V4 [0..] (replicate 2000 0) [1..] (take 2000 vs)]))
     fileSvg
         "other/asum.svg" (300,300)
-        (line def [(LineConfig 0.002 (Color 0.33 0.33 0.33 0.4))]
-         ([zipWith V2 [0..] (L.scan L.sum ys)])
+        (unitLine def [(LineConfig 0.002 (Color 0.33 0.33 0.33 0.4))]
+         ([zipWith V2 [0..] (L.scan L.sum vs)])
          )
     let fake = ([0..100] <> replicate 101 100 :: [Double])
     fileSvg "other/av.svg" (300,300) $
-        line def
+        unitLine def
         [ LineConfig 0.005 (Color 0.88 0.33 0.12 1)
         , LineConfig 0.005 (Color 0.12 0.33 0.83 1)
         , LineConfig 0.002 (Color 0.33 0.33 0.33 1)
         ]
-        [ zipWith V2 [0..] (drop 1 $ L.scan (online identity (.* 0.9)) fake)
-        , zipWith V2 [0..] (drop 1 $ L.scan (online identity (.* 0.99)) fake)
+        [ zipWith V2 [0..] (drop 1 $ L.scan (online identity (* 0.9)) fake)
+        , zipWith V2 [0..] (drop 1 $ L.scan (online identity (* 0.99)) fake)
         , zipWith V2 [0..] fake
         ]
     fileSvg "other/std.svg" (300,300) $
-        line def
+        unitLine def
         [ LineConfig 0.005 (Color 0.88 0.33 0.12 1)
         , LineConfig 0.005 (Color 0.12 0.33 0.83 1)
         , LineConfig 0.002 (Color 0.33 0.33 0.33 1)
@@ -269,21 +272,21 @@ main = do
         , zipWith V2 [0..] fake
         ]
     fileSvg "other/cmean.svg" (300,300) $
-        line def
+        unitLine def
         [ LineConfig 0.002 (Color 0.88 0.33 0.12 1)
         , LineConfig 0.002 (Color 0.12 0.33 0.83 1)
         ]
         [ zipWith V2 [0..] $
           take 5000 $ drop 100 $ drop 2 $
           (L.scan (beta 0.99)) $ drop 1 $
-          zip ys (L.scan (ma 0.9975) ys)
+          zip vs (L.scan (ma 0.9975) vs)
         , zipWith V2 [0..] $
           take 5000 $ drop 100 $ drop 2 $
           (L.scan (alpha 0.99)) $ drop 1 $
-          zip ys (L.scan (ma 0.9975) ys)
+          zip vs (L.scan (ma 0.9975) vs)
         ]
     fileSvg "other/cmeane.svg" (300,300) $
-        rect' def
+        unitRect def
         [def, RectConfig 0 (Color 0.88 0.33 0.12 0) (Color 0.33 0.33 0.12 0.3)]
         [ toV4 $ L.fold (hist (rangeCuts 6 (-0.03) 0.03) 1) $
           take 5000 $ drop 100 $
@@ -292,22 +295,23 @@ main = do
              beta 0.99 <*>
              L.premap snd (ma 0.00001) <*>
              alpha 0.99)) $
-           drop 400 $ zip ys (L.scan (ma 0.9975) ys)
+           drop 400 $ zip vs (L.scan (ma 0.9975) vs)
          , toV4 $ L.fold (hist (rangeCuts 6 (-0.03) 0.03) 1) $
            take 5000 $ drop 100 $
-           ys
+           vs
          ]
 
     fileSvg "other/csqma.svg" (300,300) $
-        line def
+        unitLine def
         [ LineConfig 0.002 (Color 0.88 0.33 0.12 1)
         , LineConfig 0.002 (Color 0.12 0.33 0.83 1)
         ]
         (fmap (zipWith V2 [0..]) <$> (\x -> [fst <$> x, snd <$> x]) $
          take 12000 $ drop 12000 $ drop 2 $
          ( L.scan ((,) <$> (alpha 0.99) <*> beta 0.99)) $
-           drop 100 $ zip ((**2)<$> ys) (L.scan (sqma 0.9975) ys))
+           drop 100 $ zip ((**2)<$> vs) (L.scan (sqma 0.9975) vs))
 
+    fileSvg "other/ex2.svg" (300,300) (ex2 # pad 1.1)
 ```
 
 basic stats
@@ -318,8 +322,8 @@ online mean and std at a 0.99 decay rate:
 ![](other/moments.svg)
 
 ``` {.sourceCode .literate .haskell}
-    let st = drop 1 $ L.scan ((,) <$> (ma 0.9) <*> (std 0.99)) ys
-    fileSvg "other/moments.svg" (300,300) $ (line def [(LineConfig 0.002 (Color 0.33 0.33 0.33 0.4)), (LineConfig 0.002 (Color 0.88 0.33 0.12 0.4))] $
+    let st = drop 1 $ L.scan ((,) <$> (ma 0.9) <*> (std 0.99)) vs
+    fileSvg "other/moments.svg" (300,300) $ (unitLine def [(LineConfig 0.002 (Color 0.33 0.33 0.33 0.4)), (LineConfig 0.002 (Color 0.88 0.33 0.12 0.4))] $
         [ zipWith V2 [0..] (fst <$> st)
         , zipWith V2 [0..] (snd <$> st)
         ])
@@ -332,8 +336,8 @@ scatter chart.
 
 ``` {.sourceCode .literate .haskell}
     fileSvg "other/scatter.svg" (500,500) $
-        scatter def [def] $ [drop (length ys - 1000) $
-        fmap (10000*) <$> L.scan (V2 <$> (ma 0.99) <*> (std 0.99)) ys]
+        unitScatter def [def] $ [drop (length vs - 1000) $
+        fmap (10000*) <$> L.scan (V2 <$> (ma 0.99) <*> (std 0.99)) vs]
 ```
 
 A histogram with r=0.99 with lifetime stats as the grey background
@@ -342,10 +346,10 @@ A histogram with r=0.99 with lifetime stats as the grey background
 
 ``` {.sourceCode .literate .haskell}
     let cuts = (rangeCuts 5 (-0.02) 0.02)
-    let h = toV4 $ freq $ L.fold (hist cuts 0.99) ys
-    let h' = toV4 $ freq $ L.fold (hist cuts 1) ys
+    let h = toV4 $ freq $ L.fold (hist cuts 0.99) vs
+    let h' = toV4 $ freq $ L.fold (hist cuts 1) vs
     fileSvg "other/hist.svg" (300,300) $
-      rect'
+      unitRect
       (chartAxes .~ [def] $ def)
       [def, rectBorderColor .~ Color 0 0 0 0
       $ rectColor .~ Color 0.333 0.333 0.333 0.1
@@ -373,10 +377,10 @@ value.
     writeFile "other/quantiles.md" $
         "\n    [min, 10th, 20th, .. 90th, max]:" <>
         mconcat (sformat (" " % prec 3) <$> toList
-                 (L.fold (quantiles' 11) ys)) <>
+                 (L.fold (quantiles' 11) vs)) <>
         "\n    online [min, 10th, 20th, .. 90th, max] with decay rate = 0.996 (one year)" <>
         mconcat (sformat (" " % prec 3) <$> toList
-                 (L.fold (quantiles 11 identity 0.996) ys))
+                 (L.fold (quantiles 11 identity 0.996) vs))
 ```
 
 digitize
@@ -390,13 +394,229 @@ A related computation is to output the quantile of each value:
     writeFile "other/digitize.md" $
         "\n    first 100 values digitized into quantiles:" <>
         mconcat ((sformat (" " % prec 3) <$>)
-                 (take 100 $ L.scan (digitize 5 identity 0.996) ys))
+                 (take 100 $ L.scan (digitize 5 identity 0.996) vs))
 
-    filePng "other/scratchpad.png" (400,400) $ line def [def]
-        [zipWith V2 [0..] (L.scan L.sum ys), zipWith V2 [0..] ((2*)<$>(L.scan L.sum ys))]
+    filePng "other/scratchpad.png" (400,400) $ unitLine def [def]
+        [zipWith V2 [0..] (L.scan L.sum vs), zipWith V2 [0..] ((2*)<$>(L.scan L.sum vs))]
+```
+
+regression
+==========
+
+$$\displaystyle L(\boldsymbol{x}, \boldsymbol{y}, m, c) = \frac{1}{2n}\sum_{i=1}^n (y - (mx + c))^2$$
+
+``` {.sourceCode .literate .haskell}
+cost_ ::
+    ( List.ListLike (f a) a
+    , Fractional a
+    , Foldable f
+    , Applicative f) =>
+    f a -> f a -> f a -> f (f a) -> a
+cost_ ms c ys xss = av
+  where
+    av = (/( fromIntegral $ length ys)) (L.fold L.sum $ abs <$> es)
+    es = ys .-. (L.fold L.sum <$> (c .+ (ms .* xss)))
+
+
+(.*) :: (Num a, Applicative f) => f a -> f (f a) -> f (f a)
+(.*) ms xss = ((<$>) . (*)) <$> ms <*> xss
+
+(.+) :: (Num a, Applicative f) => f a -> f (f a) -> f (f a)
+(.+) ms xss = ((<$>) . (+)) <$> ms <*> xss
+
+(.-.) :: (List.ListLike (f a) a, Num a) => f a -> f a -> f a
+(.-.) xs xs' = List.zipWith (-) xs xs'
+
+(.+.) :: (List.ListLike (f a) a, Num a) => f a -> f a -> f a
+(.+.) xs xs' = List.zipWith (+) xs xs'
+```
+
+[ad
+types](http://stackoverflow.com/questions/11654168/acceptable-types-in-numeric-ad-functions)
+
+``` {.sourceCode .literate .haskell}
+costD :: Double -> Double -> Double
+costD m c = cost_ [m] [c] (drop 2 vs) [(drop 1 $ L.scan (ma 0.99) vs)]
+
+costF :: (AD s Double) -> (AD s Double) -> AD s Double
+costF m c = cost_ [m] [c] (auto <$> drop 2 vs) [(fmap auto <$> drop 1 $ L.scan (ma 0.99) vs)]
+
+costS :: (AD s (Sparse Double)) -> (AD s (Sparse Double)) -> AD s (Sparse Double)
+costS m c = cost_ [m] [c] (auto <$> drop 2 vs) [(fmap auto <$> drop 1 $ L.scan (ma 0.99) vs)]
+
+costR :: (Reifies s Tape) => (Reverse s Double) -> (Reverse s Double) ->  (Reverse s Double)
+costR m c = cost_ [m] [c] (auto <$> drop 2 vs) [(fmap auto <$> drop 1 $ L.scan (ma 0.99) vs)]
+
+cost :: forall a. (Scalar a ~ Double, Mode a, Fractional a) => a -> a -> a
+cost m c = cost_ [m] [c] (auto <$> drop 2 vs) [(fmap auto <$> drop 1 $ L.scan (ma 0.99) vs)]
+```
+
+``` {.sourceCode .literate .haskell}
+costD' :: [Double] -> Double
+costD' (m:c:_) = cost_ [m] [c] (drop 2 vs) [(drop 1 $ L.scan (ma 0.99) vs)]
+
+costF' :: [AD s Double] -> AD s Double
+costF' (m:c:_) = cost_ [m] [c] (auto <$> drop 2 vs) [(fmap auto <$> drop 1 $ L.scan (ma 0.99) vs)]
+
+costS' :: [(AD s (Sparse Double))] -> AD s (Sparse Double)
+costS' (m:c:_) = cost_ [m] [c] (auto <$> drop 2 vs) [(fmap auto <$> drop 1 $ L.scan (ma 0.99) vs)]
+
+costR' :: (Reifies s Tape) => [(Reverse s Double)] -> (Reverse s Double)
+costR' (m:c:_) = cost_ [m] [c] (auto <$> drop 2 vs) [(fmap auto <$> drop 1 $ L.scan (ma 0.99) vs)]
+
+cost' :: forall a. (Scalar a ~ Double, Mode a, Fractional a) => [a] -> a
+cost' (m:c:_) = cost_ [m] [c] (auto <$> drop 2 vs) [(fmap auto <$> drop 1 $ L.scan (ma 0.99) vs)]
+```
+
+``` {.sourceCode .literate .haskell}
+costR'' :: forall a. (Mode a, Fractional (Scalar a), Fractional a) => [Scalar a] -> [a] -> a
+costR'' vs' (m:c:_) = cost_ [m] [c] (auto <$> drop 2 vs') [(fmap auto <$> drop 1 $ L.scan (ma 0.99) vs')]
+```
+
+``` {.sourceCode .literate .haskell}
+converge :: (Ord a, Num a) => a -> Int -> [[a]] -> Maybe [a]
+converge _ _ [] = Nothing
+converge epsilon n (x:xs) = Just $ go x xs (0::Int)
+  where
+    go x [] _ = x
+    go x (x':xs) i
+        | dist x x' < epsilon = x'
+        | i >= n = x'
+        | otherwise = go x' xs (i+1)
+    dist a b = L.fold L.sum $ abs <$> zipWith (-) a b
+```
+
+``` {.sourceCode .literate .haskell}
+untilConverged' :: (Ord a, Num a) => a -> Int -> [[a]] -> [[a]]
+untilConverged' _ _ [] = []
+untilConverged' epsilon n (x:xs) = go x xs (0::Int) []
+  where
+    go x [] _ res = res
+    go x (x':xs) i res
+        | dist x x' < epsilon = reverse res
+        | i >= n = reverse res
+        | otherwise = go x' xs (i+1) (x':res)
+    dist a b = L.fold L.sum $ abs <$> zipWith (-) a b
+```
+
+``` {.sourceCode .literate .haskell}
+until :: (a -> a -> Bool) -> Int -> [a] -> [a]
+until _ _ [] = []
+until pred n (x:xs) = go x xs (0::Int) []
+  where
+    go _ [] _ res = res
+    go x (x':xs) i res
+        | pred x x' = reverse res
+        | i >= n = reverse res
+        | otherwise = go x' xs (i+1) (x':res)
+
+untilConverged :: (Ord a, Num a) => a -> Int -> [[a]] -> [[a]]
+untilConverged _ _ [] = []
+untilConverged epsilon n xs = until
+  (\a b -> (L.fold L.sum $ abs <$> zipWith (-) a b) < epsilon)
+  n
+  xs
+```
+
+``` {.sourceCode .literate .haskell}
+grid :: forall b. (Fractional b, Enum b) => Range b -> b -> [b]
+grid (Range (x,x')) steps = (\a -> x + (x'-x)/steps * a) <$> [0..steps]
+locs :: forall t. Range Double -> t -> Double -> [(Double, Double)]
+locs rx ry steps = [(x, y) | x <- grid rx steps, y <- grid rx steps] :: [(Double,Double)]
+dir ::
+    (forall s. (Reifies s Tape) => [(Reverse s Double)] -> (Reverse s Double)) ->
+    Double ->
+    (Double, Double) ->
+    V2 Double
+dir f step (x, y) =
+    - r2 ((\[x,y] -> (x,y)) $
+          gradWith (\x x' -> x + (x' - x) * step) f $ [x,y])
+
+arrowAtPoint ::
+    forall b. Renderable (Path V2 Double) b =>
+    (forall s. (Reifies s Tape) => [(Reverse s Double)] -> (Reverse s Double)) ->
+    Double ->
+    Double ->
+    (Double, Double) ->
+    QDiagram b V2 Double Any
+arrowAtPoint f step mag (x, y) =
+    arrowAt' opts (p2 (x, y)) (sL *^ vf) # alignTL
+  where
+    vf   = dir f step (x, y)
+    m    = mag * (norm $ dir f step (x, y))
+
+    -- Head size is a function of the length of the vector
+    -- as are tail size and shaft length.
+    hs   = 0.02 * m
+    sW   = 0.01 * m
+    sL   = 0.01 + 0.1 * m
+    opts = (with & arrowHead .~ tri & headLength .~ global hs & shaftStyle %~ lwG sW)
+
+makeArrowChart ::
+    (Renderable (Path V2 Double) b0) =>
+    (forall s. (Reifies s Tape) => [(Reverse s Double)] -> (Reverse s Double)) ->
+    Double ->
+    Double ->
+    [(Double,Double)] ->
+    QDiagram b0 V2 Double Any
+makeArrowChart f step mag l = position $ zip (fmap p2 l) (fmap (arrowAtPoint f step mag) l)
+
+ex1 :: (Renderable (Path V2 Double) b) => QDiagram b V2 Double Any
+ex1 = makeArrowChart costR' 0.01 1 (locs (Range (-0.1, 0.1)) (Range (-0.1, 0.1)) 10)
+
+ex2 :: (Renderable (Path V2 Double) b0) => QDiagram b0 V2 Double Any
+ex2 = makeArrowChart t1 0.01 1 (locs (Range (-0.1, 0.1)) (Range (-0.1, 0.1)) 10)
+
+
+ex3 :: (Renderable (Path V2 Double) b0) => QDiagram b0 V2 Double Any
+ex3 = makeArrowChart rosenbrock 0.01 1 (locs (Range (-0.1, 0.1)) (Range (-0.1, 0.1)) 10)
+
+rosenbrock [x,y] = 100 * (y - x^2)^2 + (x - 1)^2
+```
+
+$$dx=A(x)dt+√​σ(t)​​​B(x)dW where W∼p?$$
+
+``` {.sourceCode .literate .haskell}
+-- fileSvg "other/arrows.svg" (300,300) (example (Range ((-0.001), 0.001)) (Range ((-0.00000000001), 0.00000000001)) 10 0.1 # pad 1.1)
+```
+
+``` {.sourceCode .literate .haskell}
+extrap :: (Double, [Double]) -> (Double, [Double])
+extrap (eta0, x0) = expand eta0 x0
+  where
+    (res0,_) = grad' costR' x0
+    contract eta x
+        | res' < res0 = (eta, x')
+        | otherwise = contract (eta/2) x'
+      where
+        x' :: [Double]
+        x' = x .-. ((eta *) <$> g)
+        (_,g) = grad' costR' x
+        (res',_) = grad' costR' x'
+    expand eta x
+        | res' < res0 = expand (eta*2) x'
+        | otherwise = contract (eta/2) x
+      where
+        x' :: [Double]
+        x' = x .-. ((eta *) <$> g)
+        (_,g) = grad' costR' x
+        (res',_) = grad' costR' x'
+      
+      
+```
+
+``` {.sourceCode .literate .haskell}
+-- The function to use to create the vector field.
+t1 :: (Reifies s Tape) => [(Reverse s Double)] -> (Reverse s Double)
+t1 [x,y] = sin (y + 1) * sin (x + 1)
 ```
 
 workflow
 --------
 
-    stack install && readme && pandoc -f markdown+lhs -t html -i readme.lhs -o index.html --filter pandoc-include
+    stack install && readme && pandoc -f markdown+lhs -t html -i readme.lhs -o index.html --filter pandoc-include && pandoc -f markdown+lhs -t markdown -i readme.lhs -o readme.md --filter pandoc-include
+
+todo
+----
+
+https://www.quandl.com/data/YAHOO/INDEX\_FVX-Treasury-Yield-5-Years-Index

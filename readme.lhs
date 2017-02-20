@@ -548,7 +548,7 @@ $$dx=A(x)dt+√​σ(t)​​​B(x)dW where W∼p?$$
 workflow
 ---
 
-    stack install && readme && pandoc -f markdown+lhs -t html -i readme.lhs -o index.html --filter pandoc-include
+    stack install && readme && pandoc -f markdown+lhs -t html -i readme.lhs -o index.html --filter pandoc-include && pandoc -f markdown+lhs -t markdown -i readme.lhs -o readme.md --filter pandoc-include
 
 todo
 ---

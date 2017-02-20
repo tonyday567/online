@@ -73,20 +73,29 @@ std r = (\s ss -&gt; sqrt (ss - s**2)) &lt;$&gt; ma r &lt;*&gt; sqma r
 <li>add in code and explanations in the above sections</li>
 </ul>
 <h1 id="code">Code</h1>
-<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Protolude</span> <span class="kw">hiding</span> ((%))
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="ot">{-# OPTIONS_GHC -fno-warn-name-shadowing #-}</span>
+<span class="ot">{-# OPTIONS_GHC -fno-warn-type-defaults #-}</span>
+<span class="kw">import </span><span class="dt">Protolude</span> <span class="kw">hiding</span> ((%), (&amp;))
 <span class="kw">import </span><span class="dt">Control.Monad.Primitive</span> (unsafeInlineIO)
-<span class="kw">import </span><span class="dt">Online</span>
+<span class="kw">import </span><span class="dt">Online</span> <span class="kw">hiding</span> (p2)
 <span class="kw">import </span><span class="dt">Chart.Unit</span>
 <span class="kw">import </span><span class="dt">Chart.Types</span>
 <span class="kw">import </span><span class="dt">Data.Default</span>
-<span class="kw">import </span><span class="dt">Control.Lens</span>
+<span class="kw">import </span><span class="dt">Control.Lens</span> <span class="kw">hiding</span> ((#))
 <span class="kw">import qualified</span> <span class="dt">Control.Foldl</span> <span class="kw">as</span> <span class="dt">L</span>
 <span class="kw">import </span><span class="dt">Linear</span> <span class="kw">hiding</span> (identity)
 <span class="kw">import </span><span class="dt">Data.List</span>
-<span class="kw">import </span><span class="dt">Pipes</span>
-<span class="kw">import qualified</span> <span class="dt">Pipes.Prelude</span>
+<span class="co">-- import Pipes</span>
+<span class="co">-- import qualified Pipes.Prelude</span>
 <span class="kw">import </span><span class="dt">Formatting</span>
-<span class="kw">import </span><span class="dt">Numeric.AD</span></code></pre></div>
+<span class="kw">import </span><span class="dt">Numeric.AD</span>
+<span class="kw">import qualified</span> <span class="dt">Data.ListLike</span> <span class="kw">as</span> <span class="dt">List</span>
+<span class="kw">import </span><span class="dt">Numeric.AD.Internal.Sparse</span> <span class="kw">hiding</span> (pack)
+<span class="kw">import </span><span class="dt">Numeric.AD.Jet</span>
+<span class="kw">import </span><span class="dt">Numeric.AD.Mode.Reverse</span>
+<span class="kw">import </span><span class="dt">Data.Reflection</span>
+<span class="kw">import </span><span class="dt">Numeric.AD.Internal.Reverse</span>
+<span class="kw">import </span><span class="dt">Diagrams.Prelude</span> <span class="kw">hiding</span> (<span class="dt">Vector</span>, (.-), (.-.))</code></pre></div>
 <h2 id="cassava">cassava</h2>
 <p>csv data arrives as a bytestring, gets decoded as a Vector, and decoding errors arrive as strings, so there's a fair bit of messiness working with Text Lists.</p>
 <div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Data.Csv</span>
@@ -96,6 +105,8 @@ std r = (\s ss -&gt; sqrt (ss - s**2)) &lt;$&gt; ma r &lt;*&gt; sqma r
 <span class="kw">import </span><span class="dt">Data.ByteString.Builder</span> (toLazyByteString)
 <span class="kw">import </span><span class="dt">Data.Vector</span> (<span class="dt">Vector</span>)</code></pre></div>
 <h2 id="data-munge">data munge</h2>
+<h2 id="todo">todo:</h2>
+<p>https://github.com/pvdbrand/quandl-api</p>
 <p>data is from <a href="https://www.quandl.com/data/YAHOO/INDEX_GSPC-S-P-500-Index">yahoo</a> and consists of the following fields:</p>
 <pre><code>Date,Open,High,Low,Close,Volume,Adjusted Close</code></pre>
 <p>Stats are soley on adjusted close.</p>
@@ -124,9 +135,9 @@ vs <span class="fu">=</span> fmap (\x <span class="ot">-&gt;</span> log (<span c
 <span class="ot">ret ::</span> [<span class="dt">Double</span>] <span class="ot">-&gt;</span> [<span class="dt">Double</span>]
 ret [] <span class="fu">=</span> []
 ret [_] <span class="fu">=</span> []
-ret xs <span class="fu">=</span> L.fold diff&#39; xs
+ret xs <span class="fu">=</span> L.fold dif xs
     <span class="kw">where</span>
-        diff&#39; <span class="fu">=</span> <span class="dt">L.Fold</span> step ([], <span class="dt">Nothing</span>) fst
+        dif <span class="fu">=</span> <span class="dt">L.Fold</span> step ([], <span class="dt">Nothing</span>) fst
         step x a <span class="fu">=</span> <span class="kw">case</span> snd x <span class="kw">of</span>
             <span class="dt">Nothing</span> <span class="ot">-&gt;</span> ([], <span class="dt">Just</span> a)
             <span class="dt">Just</span> a&#39; <span class="ot">-&gt;</span> ((a<span class="fu">-</span>a&#39;)<span class="fu">/</span>a&#39;<span class="fu">:</span>fst x, <span class="dt">Just</span> a)</code></pre></div>
@@ -137,18 +148,18 @@ ret xs <span class="fu">=</span> L.fold diff&#39; xs
 <div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="ot">main ::</span> <span class="dt">IO</span> ()
 main <span class="fu">=</span> <span class="kw">do</span>
     fileSvg <span class="st">&quot;other/elems.svg&quot;</span> (<span class="dv">300</span>,<span class="dv">300</span>)
-        (rect&#39;
+        (unitRect
          (chartAxes <span class="fu">.</span> element <span class="dv">0</span> <span class="fu">.</span> axisTickStyle <span class="fu">.~</span> <span class="dt">TickNone</span> <span class="fu">$</span> def)
          [def]
          ([zipWith4 <span class="dt">V4</span> [<span class="dv">0</span><span class="fu">..</span>] (replicate <span class="dv">2000</span> <span class="dv">0</span>) [<span class="dv">1</span><span class="fu">..</span>] (take <span class="dv">2000</span> vs)]))
     fileSvg
         <span class="st">&quot;other/asum.svg&quot;</span> (<span class="dv">300</span>,<span class="dv">300</span>)
-        (line def [(<span class="dt">LineConfig</span> <span class="fl">0.002</span> (<span class="dt">Color</span> <span class="fl">0.33</span> <span class="fl">0.33</span> <span class="fl">0.33</span> <span class="fl">0.4</span>))]
+        (unitLine def [(<span class="dt">LineConfig</span> <span class="fl">0.002</span> (<span class="dt">Color</span> <span class="fl">0.33</span> <span class="fl">0.33</span> <span class="fl">0.33</span> <span class="fl">0.4</span>))]
          ([zipWith <span class="dt">V2</span> [<span class="dv">0</span><span class="fu">..</span>] (L.scan L.sum vs)])
          )
     <span class="kw">let</span> fake <span class="fu">=</span> ([<span class="dv">0</span><span class="fu">..</span><span class="dv">100</span>] <span class="fu">&lt;&gt;</span> replicate <span class="dv">101</span> <span class="dv">100</span><span class="ot"> ::</span> [<span class="dt">Double</span>])
     fileSvg <span class="st">&quot;other/av.svg&quot;</span> (<span class="dv">300</span>,<span class="dv">300</span>) <span class="fu">$</span>
-        line def
+        unitLine def
         [ <span class="dt">LineConfig</span> <span class="fl">0.005</span> (<span class="dt">Color</span> <span class="fl">0.88</span> <span class="fl">0.33</span> <span class="fl">0.12</span> <span class="dv">1</span>)
         , <span class="dt">LineConfig</span> <span class="fl">0.005</span> (<span class="dt">Color</span> <span class="fl">0.12</span> <span class="fl">0.33</span> <span class="fl">0.83</span> <span class="dv">1</span>)
         , <span class="dt">LineConfig</span> <span class="fl">0.002</span> (<span class="dt">Color</span> <span class="fl">0.33</span> <span class="fl">0.33</span> <span class="fl">0.33</span> <span class="dv">1</span>)
@@ -158,7 +169,7 @@ main <span class="fu">=</span> <span class="kw">do</span>
         , zipWith <span class="dt">V2</span> [<span class="dv">0</span><span class="fu">..</span>] fake
         ]
     fileSvg <span class="st">&quot;other/std.svg&quot;</span> (<span class="dv">300</span>,<span class="dv">300</span>) <span class="fu">$</span>
-        line def
+        unitLine def
         [ <span class="dt">LineConfig</span> <span class="fl">0.005</span> (<span class="dt">Color</span> <span class="fl">0.88</span> <span class="fl">0.33</span> <span class="fl">0.12</span> <span class="dv">1</span>)
         , <span class="dt">LineConfig</span> <span class="fl">0.005</span> (<span class="dt">Color</span> <span class="fl">0.12</span> <span class="fl">0.33</span> <span class="fl">0.83</span> <span class="dv">1</span>)
         , <span class="dt">LineConfig</span> <span class="fl">0.002</span> (<span class="dt">Color</span> <span class="fl">0.33</span> <span class="fl">0.33</span> <span class="fl">0.33</span> <span class="dv">1</span>)
@@ -168,7 +179,7 @@ main <span class="fu">=</span> <span class="kw">do</span>
         , zipWith <span class="dt">V2</span> [<span class="dv">0</span><span class="fu">..</span>] fake
         ]
     fileSvg <span class="st">&quot;other/cmean.svg&quot;</span> (<span class="dv">300</span>,<span class="dv">300</span>) <span class="fu">$</span>
-        line def
+        unitLine def
         [ <span class="dt">LineConfig</span> <span class="fl">0.002</span> (<span class="dt">Color</span> <span class="fl">0.88</span> <span class="fl">0.33</span> <span class="fl">0.12</span> <span class="dv">1</span>)
         , <span class="dt">LineConfig</span> <span class="fl">0.002</span> (<span class="dt">Color</span> <span class="fl">0.12</span> <span class="fl">0.33</span> <span class="fl">0.83</span> <span class="dv">1</span>)
         ]
@@ -182,7 +193,7 @@ main <span class="fu">=</span> <span class="kw">do</span>
           zip vs (L.scan (ma <span class="fl">0.9975</span>) vs)
         ]
     fileSvg <span class="st">&quot;other/cmeane.svg&quot;</span> (<span class="dv">300</span>,<span class="dv">300</span>) <span class="fu">$</span>
-        rect&#39; def
+        unitRect def
         [def, <span class="dt">RectConfig</span> <span class="dv">0</span> (<span class="dt">Color</span> <span class="fl">0.88</span> <span class="fl">0.33</span> <span class="fl">0.12</span> <span class="dv">0</span>) (<span class="dt">Color</span> <span class="fl">0.33</span> <span class="fl">0.33</span> <span class="fl">0.12</span> <span class="fl">0.3</span>)]
         [ toV4 <span class="fu">$</span> L.fold (hist (rangeCuts <span class="dv">6</span> (<span class="fu">-</span><span class="fl">0.03</span>) <span class="fl">0.03</span>) <span class="dv">1</span>) <span class="fu">$</span>
           take <span class="dv">5000</span> <span class="fu">$</span> drop <span class="dv">100</span> <span class="fu">$</span>
@@ -198,7 +209,7 @@ main <span class="fu">=</span> <span class="kw">do</span>
          ]
 
     fileSvg <span class="st">&quot;other/csqma.svg&quot;</span> (<span class="dv">300</span>,<span class="dv">300</span>) <span class="fu">$</span>
-        line def
+        unitLine def
         [ <span class="dt">LineConfig</span> <span class="fl">0.002</span> (<span class="dt">Color</span> <span class="fl">0.88</span> <span class="fl">0.33</span> <span class="fl">0.12</span> <span class="dv">1</span>)
         , <span class="dt">LineConfig</span> <span class="fl">0.002</span> (<span class="dt">Color</span> <span class="fl">0.12</span> <span class="fl">0.33</span> <span class="fl">0.83</span> <span class="dv">1</span>)
         ]
@@ -206,7 +217,8 @@ main <span class="fu">=</span> <span class="kw">do</span>
          take <span class="dv">12000</span> <span class="fu">$</span> drop <span class="dv">12000</span> <span class="fu">$</span> drop <span class="dv">2</span> <span class="fu">$</span>
          ( L.scan ((,) <span class="fu">&lt;$&gt;</span> (alpha <span class="fl">0.99</span>) <span class="fu">&lt;*&gt;</span> beta <span class="fl">0.99</span>)) <span class="fu">$</span>
            drop <span class="dv">100</span> <span class="fu">$</span> zip ((<span class="fu">**</span><span class="dv">2</span>)<span class="fu">&lt;$&gt;</span> vs) (L.scan (sqma <span class="fl">0.9975</span>) vs))
-</code></pre></div>
+
+    fileSvg <span class="st">&quot;other/ex2.svg&quot;</span> (<span class="dv">300</span>,<span class="dv">300</span>) (ex2 <span class="fu">#</span> pad <span class="fl">1.1</span>)</code></pre></div>
 <h2 id="basic-stats">basic stats</h2>
 <p>online mean and std at a 0.99 decay rate:</p>
 <div class="figure">
@@ -214,7 +226,7 @@ main <span class="fu">=</span> <span class="kw">do</span>
 
 </div>
 <div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell">    <span class="kw">let</span> st <span class="fu">=</span> drop <span class="dv">1</span> <span class="fu">$</span> L.scan ((,) <span class="fu">&lt;$&gt;</span> (ma <span class="fl">0.9</span>) <span class="fu">&lt;*&gt;</span> (std <span class="fl">0.99</span>)) vs
-    fileSvg <span class="st">&quot;other/moments.svg&quot;</span> (<span class="dv">300</span>,<span class="dv">300</span>) <span class="fu">$</span> (line def [(<span class="dt">LineConfig</span> <span class="fl">0.002</span> (<span class="dt">Color</span> <span class="fl">0.33</span> <span class="fl">0.33</span> <span class="fl">0.33</span> <span class="fl">0.4</span>)), (<span class="dt">LineConfig</span> <span class="fl">0.002</span> (<span class="dt">Color</span> <span class="fl">0.88</span> <span class="fl">0.33</span> <span class="fl">0.12</span> <span class="fl">0.4</span>))] <span class="fu">$</span>
+    fileSvg <span class="st">&quot;other/moments.svg&quot;</span> (<span class="dv">300</span>,<span class="dv">300</span>) <span class="fu">$</span> (unitLine def [(<span class="dt">LineConfig</span> <span class="fl">0.002</span> (<span class="dt">Color</span> <span class="fl">0.33</span> <span class="fl">0.33</span> <span class="fl">0.33</span> <span class="fl">0.4</span>)), (<span class="dt">LineConfig</span> <span class="fl">0.002</span> (<span class="dt">Color</span> <span class="fl">0.88</span> <span class="fl">0.33</span> <span class="fl">0.12</span> <span class="fl">0.4</span>))] <span class="fu">$</span>
         [ zipWith <span class="dt">V2</span> [<span class="dv">0</span><span class="fu">..</span>] (fst <span class="fu">&lt;$&gt;</span> st)
         , zipWith <span class="dt">V2</span> [<span class="dv">0</span><span class="fu">..</span>] (snd <span class="fu">&lt;$&gt;</span> st)
         ])</code></pre></div>
@@ -224,7 +236,7 @@ main <span class="fu">=</span> <span class="kw">do</span>
 
 </div>
 <div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell">    fileSvg <span class="st">&quot;other/scatter.svg&quot;</span> (<span class="dv">500</span>,<span class="dv">500</span>) <span class="fu">$</span>
-        scatter def [def] <span class="fu">$</span> [drop (length vs <span class="fu">-</span> <span class="dv">1000</span>) <span class="fu">$</span>
+        unitScatter def [def] <span class="fu">$</span> [drop (length vs <span class="fu">-</span> <span class="dv">1000</span>) <span class="fu">$</span>
         fmap (<span class="dv">10000</span><span class="fu">*</span>) <span class="fu">&lt;$&gt;</span> L.scan (<span class="dt">V2</span> <span class="fu">&lt;$&gt;</span> (ma <span class="fl">0.99</span>) <span class="fu">&lt;*&gt;</span> (std <span class="fl">0.99</span>)) vs]</code></pre></div>
 <p>A histogram with r=0.99 with lifetime stats as the grey background</p>
 <div class="figure">
@@ -235,7 +247,7 @@ main <span class="fu">=</span> <span class="kw">do</span>
     <span class="kw">let</span> h <span class="fu">=</span> toV4 <span class="fu">$</span> freq <span class="fu">$</span> L.fold (hist cuts <span class="fl">0.99</span>) vs
     <span class="kw">let</span> h&#39; <span class="fu">=</span> toV4 <span class="fu">$</span> freq <span class="fu">$</span> L.fold (hist cuts <span class="dv">1</span>) vs
     fileSvg <span class="st">&quot;other/hist.svg&quot;</span> (<span class="dv">300</span>,<span class="dv">300</span>) <span class="fu">$</span>
-      rect&#39;
+      unitRect
       (chartAxes <span class="fu">.~</span> [def] <span class="fu">$</span> def)
       [def, rectBorderColor <span class="fu">.~</span> <span class="dt">Color</span> <span class="dv">0</span> <span class="dv">0</span> <span class="dv">0</span> <span class="dv">0</span>
       <span class="fu">$</span> rectColor <span class="fu">.~</span> <span class="dt">Color</span> <span class="fl">0.333</span> <span class="fl">0.333</span> <span class="fl">0.333</span> <span class="fl">0.1</span>
@@ -261,32 +273,181 @@ online [min, 10th, 20th, .. 90th, max] with decay rate = 0.996 (one year) -0.033
         mconcat ((sformat (<span class="st">&quot; &quot;</span> <span class="fu">%</span> prec <span class="dv">3</span>) <span class="fu">&lt;$&gt;</span>)
                  (take <span class="dv">100</span> <span class="fu">$</span> L.scan (digitize <span class="dv">5</span> identity <span class="fl">0.996</span>) vs))
 
-    filePng <span class="st">&quot;other/scratchpad.png&quot;</span> (<span class="dv">400</span>,<span class="dv">400</span>) <span class="fu">$</span> line def [def]
+    filePng <span class="st">&quot;other/scratchpad.png&quot;</span> (<span class="dv">400</span>,<span class="dv">400</span>) <span class="fu">$</span> unitLine def [def]
         [zipWith <span class="dt">V2</span> [<span class="dv">0</span><span class="fu">..</span>] (L.scan L.sum vs), zipWith <span class="dt">V2</span> [<span class="dv">0</span><span class="fu">..</span>] ((<span class="dv">2</span><span class="fu">*</span>)<span class="fu">&lt;$&gt;</span>(L.scan L.sum vs))]</code></pre></div>
 <h1 id="regression">regression</h1>
 <p><br /><span class="math display">$$\displaystyle L(\boldsymbol{x}, \boldsymbol{y}, m, c) = \frac{1}{2n}\sum_{i=1}^n (y - (mx + c))^2$$</span><br /></p>
-<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="ot">cost ::</span> (<span class="dt">Fractional</span> a, <span class="dt">Num</span> a, <span class="dt">Foldable</span> f, <span class="dt">Applicative</span> f) <span class="ot">=&gt;</span> f a <span class="ot">-&gt;</span> f a <span class="ot">-&gt;</span> f a <span class="ot">-&gt;</span> f (f a) <span class="ot">-&gt;</span> a
-cost ms cs ys xss <span class="fu">=</span> cost&#39;
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell">cost_ <span class="ot">::</span>
+    ( <span class="dt">List.ListLike</span> (f a) a
+    , <span class="dt">Fractional</span> a
+    , <span class="dt">Foldable</span> f
+    , <span class="dt">Applicative</span> f) <span class="ot">=&gt;</span>
+    f a <span class="ot">-&gt;</span> f a <span class="ot">-&gt;</span> f a <span class="ot">-&gt;</span> f (f a) <span class="ot">-&gt;</span> a
+cost_ ms c ys xss <span class="fu">=</span> av
   <span class="kw">where</span>
-    cost&#39; <span class="fu">=</span> (<span class="fu">/</span>( fromIntegral <span class="fu">$</span> length ys)) (L.fold L.sum <span class="fu">$</span> abs <span class="fu">&lt;$&gt;</span> es)
-    es <span class="fu">=</span> ys <span class="fu">.-.</span> (L.fold L.sum <span class="fu">&lt;$&gt;</span> (cs <span class="fu">.+</span> (ms <span class="fu">.*</span> xss)))
+    av <span class="fu">=</span> (<span class="fu">/</span>( fromIntegral <span class="fu">$</span> length ys)) (L.fold L.sum <span class="fu">$</span> abs <span class="fu">&lt;$&gt;</span> es)
+    es <span class="fu">=</span> ys <span class="fu">.-.</span> (L.fold L.sum <span class="fu">&lt;$&gt;</span> (c <span class="fu">.+</span> (ms <span class="fu">.*</span> xss)))
+
 
 <span class="ot">(.*) ::</span> (<span class="dt">Num</span> a, <span class="dt">Applicative</span> f) <span class="ot">=&gt;</span> f a <span class="ot">-&gt;</span> f (f a) <span class="ot">-&gt;</span> f (f a)
-(<span class="fu">.*</span>) ms xss <span class="fu">=</span> (\xs <span class="ot">-&gt;</span> ms <span class="fu">.*.</span> xs) <span class="fu">&lt;$&gt;</span> xss
+(<span class="fu">.*</span>) ms xss <span class="fu">=</span> ((<span class="fu">&lt;$&gt;</span>) <span class="fu">.</span> (<span class="fu">*</span>)) <span class="fu">&lt;$&gt;</span> ms <span class="fu">&lt;*&gt;</span> xss
 
 <span class="ot">(.+) ::</span> (<span class="dt">Num</span> a, <span class="dt">Applicative</span> f) <span class="ot">=&gt;</span> f a <span class="ot">-&gt;</span> f (f a) <span class="ot">-&gt;</span> f (f a)
-(<span class="fu">.+</span>) ms xss <span class="fu">=</span> (\xs <span class="ot">-&gt;</span> ms <span class="fu">.+.</span> xs) <span class="fu">&lt;$&gt;</span> xss
+(<span class="fu">.+</span>) ms xss <span class="fu">=</span> ((<span class="fu">&lt;$&gt;</span>) <span class="fu">.</span> (<span class="fu">+</span>)) <span class="fu">&lt;$&gt;</span> ms <span class="fu">&lt;*&gt;</span> xss
 
-<span class="ot">(.+.) ::</span> (<span class="dt">Num</span> a, <span class="dt">Applicative</span> f) <span class="ot">=&gt;</span> f a <span class="ot">-&gt;</span> f a <span class="ot">-&gt;</span> f a
-(<span class="fu">.+.</span>) xs xs&#39; <span class="fu">=</span> (<span class="fu">+</span>) <span class="fu">&lt;$&gt;</span> xs <span class="fu">&lt;*&gt;</span> xs&#39;
+<span class="ot">(.-.) ::</span> (<span class="dt">List.ListLike</span> (f a) a, <span class="dt">Num</span> a) <span class="ot">=&gt;</span> f a <span class="ot">-&gt;</span> f a <span class="ot">-&gt;</span> f a
+(<span class="fu">.-.</span>) xs xs&#39; <span class="fu">=</span> List.zipWith (<span class="fu">-</span>) xs xs&#39;
 
-<span class="ot">(.-.) ::</span> (<span class="dt">Num</span> a, <span class="dt">Applicative</span> f) <span class="ot">=&gt;</span> f a <span class="ot">-&gt;</span> f a <span class="ot">-&gt;</span> f a
-(<span class="fu">.-.</span>) xs xs&#39; <span class="fu">=</span> (<span class="fu">-</span>) <span class="fu">&lt;$&gt;</span> xs <span class="fu">&lt;*&gt;</span> xs&#39;
+<span class="ot">(.+.) ::</span> (<span class="dt">List.ListLike</span> (f a) a, <span class="dt">Num</span> a) <span class="ot">=&gt;</span> f a <span class="ot">-&gt;</span> f a <span class="ot">-&gt;</span> f a
+(<span class="fu">.+.</span>) xs xs&#39; <span class="fu">=</span> List.zipWith (<span class="fu">+</span>) xs xs&#39;</code></pre></div>
+<p><a href="http://stackoverflow.com/questions/11654168/acceptable-types-in-numeric-ad-functions">ad types</a></p>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="ot">costD ::</span> <span class="dt">Double</span> <span class="ot">-&gt;</span> <span class="dt">Double</span> <span class="ot">-&gt;</span> <span class="dt">Double</span>
+costD m c <span class="fu">=</span> cost_ [m] [c] (drop <span class="dv">2</span> vs) [(drop <span class="dv">1</span> <span class="fu">$</span> L.scan (ma <span class="fl">0.99</span>) vs)]
 
-<span class="ot">(.*.) ::</span> (<span class="dt">Num</span> a, <span class="dt">Applicative</span> f) <span class="ot">=&gt;</span> f a <span class="ot">-&gt;</span> f a <span class="ot">-&gt;</span> f a
-(<span class="fu">.*.</span>) xs xs&#39; <span class="fu">=</span> (<span class="fu">+</span>) <span class="fu">&lt;$&gt;</span> xs <span class="fu">&lt;*&gt;</span> xs&#39;
+<span class="ot">costF ::</span> (<span class="dt">AD</span> s <span class="dt">Double</span>) <span class="ot">-&gt;</span> (<span class="dt">AD</span> s <span class="dt">Double</span>) <span class="ot">-&gt;</span> <span class="dt">AD</span> s <span class="dt">Double</span>
+costF m c <span class="fu">=</span> cost_ [m] [c] (auto <span class="fu">&lt;$&gt;</span> drop <span class="dv">2</span> vs) [(fmap auto <span class="fu">&lt;$&gt;</span> drop <span class="dv">1</span> <span class="fu">$</span> L.scan (ma <span class="fl">0.99</span>) vs)]
+
+<span class="ot">costS ::</span> (<span class="dt">AD</span> s (<span class="dt">Sparse</span> <span class="dt">Double</span>)) <span class="ot">-&gt;</span> (<span class="dt">AD</span> s (<span class="dt">Sparse</span> <span class="dt">Double</span>)) <span class="ot">-&gt;</span> <span class="dt">AD</span> s (<span class="dt">Sparse</span> <span class="dt">Double</span>)
+costS m c <span class="fu">=</span> cost_ [m] [c] (auto <span class="fu">&lt;$&gt;</span> drop <span class="dv">2</span> vs) [(fmap auto <span class="fu">&lt;$&gt;</span> drop <span class="dv">1</span> <span class="fu">$</span> L.scan (ma <span class="fl">0.99</span>) vs)]
+
+<span class="ot">costR ::</span> (<span class="dt">Reifies</span> s <span class="dt">Tape</span>) <span class="ot">=&gt;</span> (<span class="dt">Reverse</span> s <span class="dt">Double</span>) <span class="ot">-&gt;</span> (<span class="dt">Reverse</span> s <span class="dt">Double</span>) <span class="ot">-&gt;</span>  (<span class="dt">Reverse</span> s <span class="dt">Double</span>)
+costR m c <span class="fu">=</span> cost_ [m] [c] (auto <span class="fu">&lt;$&gt;</span> drop <span class="dv">2</span> vs) [(fmap auto <span class="fu">&lt;$&gt;</span> drop <span class="dv">1</span> <span class="fu">$</span> L.scan (ma <span class="fl">0.99</span>) vs)]
+
+<span class="ot">cost ::</span> forall a<span class="fu">.</span> (<span class="dt">Scalar</span> a <span class="fu">~</span> <span class="dt">Double</span>, <span class="dt">Mode</span> a, <span class="dt">Fractional</span> a) <span class="ot">=&gt;</span> a <span class="ot">-&gt;</span> a <span class="ot">-&gt;</span> a
+cost m c <span class="fu">=</span> cost_ [m] [c] (auto <span class="fu">&lt;$&gt;</span> drop <span class="dv">2</span> vs) [(fmap auto <span class="fu">&lt;$&gt;</span> drop <span class="dv">1</span> <span class="fu">$</span> L.scan (ma <span class="fl">0.99</span>) vs)]</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="ot">costD&#39; ::</span> [<span class="dt">Double</span>] <span class="ot">-&gt;</span> <span class="dt">Double</span>
+costD&#39; (m<span class="fu">:</span>c<span class="fu">:</span>_) <span class="fu">=</span> cost_ [m] [c] (drop <span class="dv">2</span> vs) [(drop <span class="dv">1</span> <span class="fu">$</span> L.scan (ma <span class="fl">0.99</span>) vs)]
+
+<span class="ot">costF&#39; ::</span> [<span class="dt">AD</span> s <span class="dt">Double</span>] <span class="ot">-&gt;</span> <span class="dt">AD</span> s <span class="dt">Double</span>
+costF&#39; (m<span class="fu">:</span>c<span class="fu">:</span>_) <span class="fu">=</span> cost_ [m] [c] (auto <span class="fu">&lt;$&gt;</span> drop <span class="dv">2</span> vs) [(fmap auto <span class="fu">&lt;$&gt;</span> drop <span class="dv">1</span> <span class="fu">$</span> L.scan (ma <span class="fl">0.99</span>) vs)]
+
+<span class="ot">costS&#39; ::</span> [(<span class="dt">AD</span> s (<span class="dt">Sparse</span> <span class="dt">Double</span>))] <span class="ot">-&gt;</span> <span class="dt">AD</span> s (<span class="dt">Sparse</span> <span class="dt">Double</span>)
+costS&#39; (m<span class="fu">:</span>c<span class="fu">:</span>_) <span class="fu">=</span> cost_ [m] [c] (auto <span class="fu">&lt;$&gt;</span> drop <span class="dv">2</span> vs) [(fmap auto <span class="fu">&lt;$&gt;</span> drop <span class="dv">1</span> <span class="fu">$</span> L.scan (ma <span class="fl">0.99</span>) vs)]
+
+<span class="ot">costR&#39; ::</span> (<span class="dt">Reifies</span> s <span class="dt">Tape</span>) <span class="ot">=&gt;</span> [(<span class="dt">Reverse</span> s <span class="dt">Double</span>)] <span class="ot">-&gt;</span> (<span class="dt">Reverse</span> s <span class="dt">Double</span>)
+costR&#39; (m<span class="fu">:</span>c<span class="fu">:</span>_) <span class="fu">=</span> cost_ [m] [c] (auto <span class="fu">&lt;$&gt;</span> drop <span class="dv">2</span> vs) [(fmap auto <span class="fu">&lt;$&gt;</span> drop <span class="dv">1</span> <span class="fu">$</span> L.scan (ma <span class="fl">0.99</span>) vs)]
+
+<span class="ot">cost&#39; ::</span> forall a<span class="fu">.</span> (<span class="dt">Scalar</span> a <span class="fu">~</span> <span class="dt">Double</span>, <span class="dt">Mode</span> a, <span class="dt">Fractional</span> a) <span class="ot">=&gt;</span> [a] <span class="ot">-&gt;</span> a
+cost&#39; (m<span class="fu">:</span>c<span class="fu">:</span>_) <span class="fu">=</span> cost_ [m] [c] (auto <span class="fu">&lt;$&gt;</span> drop <span class="dv">2</span> vs) [(fmap auto <span class="fu">&lt;$&gt;</span> drop <span class="dv">1</span> <span class="fu">$</span> L.scan (ma <span class="fl">0.99</span>) vs)]</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="ot">costR&#39;&#39; ::</span> forall a<span class="fu">.</span> (<span class="dt">Mode</span> a, <span class="dt">Fractional</span> (<span class="dt">Scalar</span> a), <span class="dt">Fractional</span> a) <span class="ot">=&gt;</span> [<span class="dt">Scalar</span> a] <span class="ot">-&gt;</span> [a] <span class="ot">-&gt;</span> a
+costR&#39;&#39; vs&#39; (m<span class="fu">:</span>c<span class="fu">:</span>_) <span class="fu">=</span> cost_ [m] [c] (auto <span class="fu">&lt;$&gt;</span> drop <span class="dv">2</span> vs&#39;) [(fmap auto <span class="fu">&lt;$&gt;</span> drop <span class="dv">1</span> <span class="fu">$</span> L.scan (ma <span class="fl">0.99</span>) vs&#39;)]</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="ot">converge ::</span> (<span class="dt">Ord</span> a, <span class="dt">Num</span> a) <span class="ot">=&gt;</span> a <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> [[a]] <span class="ot">-&gt;</span> <span class="dt">Maybe</span> [a]
+converge _ _ [] <span class="fu">=</span> <span class="dt">Nothing</span>
+converge epsilon n (x<span class="fu">:</span>xs) <span class="fu">=</span> <span class="dt">Just</span> <span class="fu">$</span> go x xs (<span class="dv">0</span><span class="ot">::</span><span class="dt">Int</span>)
+  <span class="kw">where</span>
+    go x [] _ <span class="fu">=</span> x
+    go x (x&#39;<span class="fu">:</span>xs) i
+        <span class="fu">|</span> dist x x&#39; <span class="fu">&lt;</span> epsilon <span class="fu">=</span> x&#39;
+        <span class="fu">|</span> i <span class="fu">&gt;=</span> n <span class="fu">=</span> x&#39;
+        <span class="fu">|</span> otherwise <span class="fu">=</span> go x&#39; xs (i<span class="fu">+</span><span class="dv">1</span>)
+    dist a b <span class="fu">=</span> L.fold L.sum <span class="fu">$</span> abs <span class="fu">&lt;$&gt;</span> zipWith (<span class="fu">-</span>) a b</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="ot">untilConverged&#39; ::</span> (<span class="dt">Ord</span> a, <span class="dt">Num</span> a) <span class="ot">=&gt;</span> a <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> [[a]] <span class="ot">-&gt;</span> [[a]]
+untilConverged&#39; _ _ [] <span class="fu">=</span> []
+untilConverged&#39; epsilon n (x<span class="fu">:</span>xs) <span class="fu">=</span> go x xs (<span class="dv">0</span><span class="ot">::</span><span class="dt">Int</span>) []
+  <span class="kw">where</span>
+    go x [] _ res <span class="fu">=</span> res
+    go x (x&#39;<span class="fu">:</span>xs) i res
+        <span class="fu">|</span> dist x x&#39; <span class="fu">&lt;</span> epsilon <span class="fu">=</span> reverse res
+        <span class="fu">|</span> i <span class="fu">&gt;=</span> n <span class="fu">=</span> reverse res
+        <span class="fu">|</span> otherwise <span class="fu">=</span> go x&#39; xs (i<span class="fu">+</span><span class="dv">1</span>) (x&#39;<span class="fu">:</span>res)
+    dist a b <span class="fu">=</span> L.fold L.sum <span class="fu">$</span> abs <span class="fu">&lt;$&gt;</span> zipWith (<span class="fu">-</span>) a b</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell">until<span class="ot"> ::</span> (a <span class="ot">-&gt;</span> a <span class="ot">-&gt;</span> <span class="dt">Bool</span>) <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> [a] <span class="ot">-&gt;</span> [a]
+until _ _ [] <span class="fu">=</span> []
+until pred n (x<span class="fu">:</span>xs) <span class="fu">=</span> go x xs (<span class="dv">0</span><span class="ot">::</span><span class="dt">Int</span>) []
+  <span class="kw">where</span>
+    go _ [] _ res <span class="fu">=</span> res
+    go x (x&#39;<span class="fu">:</span>xs) i res
+        <span class="fu">|</span> pred x x&#39; <span class="fu">=</span> reverse res
+        <span class="fu">|</span> i <span class="fu">&gt;=</span> n <span class="fu">=</span> reverse res
+        <span class="fu">|</span> otherwise <span class="fu">=</span> go x&#39; xs (i<span class="fu">+</span><span class="dv">1</span>) (x&#39;<span class="fu">:</span>res)
+
+<span class="ot">untilConverged ::</span> (<span class="dt">Ord</span> a, <span class="dt">Num</span> a) <span class="ot">=&gt;</span> a <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> [[a]] <span class="ot">-&gt;</span> [[a]]
+untilConverged _ _ [] <span class="fu">=</span> []
+untilConverged epsilon n xs <span class="fu">=</span> until
+  (\a b <span class="ot">-&gt;</span> (L.fold L.sum <span class="fu">$</span> abs <span class="fu">&lt;$&gt;</span> zipWith (<span class="fu">-</span>) a b) <span class="fu">&lt;</span> epsilon)
+  n
+  xs</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="ot">grid ::</span> forall b<span class="fu">.</span> (<span class="dt">Fractional</span> b, <span class="dt">Enum</span> b) <span class="ot">=&gt;</span> <span class="dt">Range</span> b <span class="ot">-&gt;</span> b <span class="ot">-&gt;</span> [b]
+grid (<span class="dt">Range</span> (x,x&#39;)) steps <span class="fu">=</span> (\a <span class="ot">-&gt;</span> x <span class="fu">+</span> (x&#39;<span class="fu">-</span>x)<span class="fu">/</span>steps <span class="fu">*</span> a) <span class="fu">&lt;$&gt;</span> [<span class="dv">0</span><span class="fu">..</span>steps]
+<span class="ot">locs ::</span> forall t<span class="fu">.</span> <span class="dt">Range</span> <span class="dt">Double</span> <span class="ot">-&gt;</span> t <span class="ot">-&gt;</span> <span class="dt">Double</span> <span class="ot">-&gt;</span> [(<span class="dt">Double</span>, <span class="dt">Double</span>)]
+locs rx ry steps <span class="fu">=</span> [(x, y) <span class="fu">|</span> x <span class="ot">&lt;-</span> grid rx steps, y <span class="ot">&lt;-</span> grid rx steps]<span class="ot"> ::</span> [(<span class="dt">Double</span>,<span class="dt">Double</span>)]
+dir <span class="ot">::</span>
+    (forall s<span class="fu">.</span> (<span class="dt">Reifies</span> s <span class="dt">Tape</span>) <span class="ot">=&gt;</span> [(<span class="dt">Reverse</span> s <span class="dt">Double</span>)] <span class="ot">-&gt;</span> (<span class="dt">Reverse</span> s <span class="dt">Double</span>)) <span class="ot">-&gt;</span>
+    <span class="dt">Double</span> <span class="ot">-&gt;</span>
+    (<span class="dt">Double</span>, <span class="dt">Double</span>) <span class="ot">-&gt;</span>
+    <span class="dt">V2</span> <span class="dt">Double</span>
+dir f step (x, y) <span class="fu">=</span>
+    <span class="fu">-</span> r2 ((\[x,y] <span class="ot">-&gt;</span> (x,y)) <span class="fu">$</span>
+          gradWith (\x x&#39; <span class="ot">-&gt;</span> x <span class="fu">+</span> (x&#39; <span class="fu">-</span> x) <span class="fu">*</span> step) f <span class="fu">$</span> [x,y])
+
+arrowAtPoint <span class="ot">::</span>
+    forall b<span class="fu">.</span> <span class="dt">Renderable</span> (<span class="dt">Path</span> <span class="dt">V2</span> <span class="dt">Double</span>) b <span class="ot">=&gt;</span>
+    (forall s<span class="fu">.</span> (<span class="dt">Reifies</span> s <span class="dt">Tape</span>) <span class="ot">=&gt;</span> [(<span class="dt">Reverse</span> s <span class="dt">Double</span>)] <span class="ot">-&gt;</span> (<span class="dt">Reverse</span> s <span class="dt">Double</span>)) <span class="ot">-&gt;</span>
+    <span class="dt">Double</span> <span class="ot">-&gt;</span>
+    <span class="dt">Double</span> <span class="ot">-&gt;</span>
+    (<span class="dt">Double</span>, <span class="dt">Double</span>) <span class="ot">-&gt;</span>
+    <span class="dt">QDiagram</span> b <span class="dt">V2</span> <span class="dt">Double</span> <span class="dt">Any</span>
+arrowAtPoint f step mag (x, y) <span class="fu">=</span>
+    arrowAt&#39; opts (p2 (x, y)) (sL <span class="fu">*^</span> vf) <span class="fu">#</span> alignTL
+  <span class="kw">where</span>
+    vf   <span class="fu">=</span> dir f step (x, y)
+    m    <span class="fu">=</span> mag <span class="fu">*</span> (norm <span class="fu">$</span> dir f step (x, y))
+
+    <span class="co">-- Head size is a function of the length of the vector</span>
+    <span class="co">-- as are tail size and shaft length.</span>
+    hs   <span class="fu">=</span> <span class="fl">0.02</span> <span class="fu">*</span> m
+    sW   <span class="fu">=</span> <span class="fl">0.01</span> <span class="fu">*</span> m
+    sL   <span class="fu">=</span> <span class="fl">0.01</span> <span class="fu">+</span> <span class="fl">0.1</span> <span class="fu">*</span> m
+    opts <span class="fu">=</span> (with <span class="fu">&amp;</span> arrowHead <span class="fu">.~</span> tri <span class="fu">&amp;</span> headLength <span class="fu">.~</span> global hs <span class="fu">&amp;</span> shaftStyle <span class="fu">%~</span> lwG sW)
+
+makeArrowChart <span class="ot">::</span>
+    (<span class="dt">Renderable</span> (<span class="dt">Path</span> <span class="dt">V2</span> <span class="dt">Double</span>) b0) <span class="ot">=&gt;</span>
+    (forall s<span class="fu">.</span> (<span class="dt">Reifies</span> s <span class="dt">Tape</span>) <span class="ot">=&gt;</span> [(<span class="dt">Reverse</span> s <span class="dt">Double</span>)] <span class="ot">-&gt;</span> (<span class="dt">Reverse</span> s <span class="dt">Double</span>)) <span class="ot">-&gt;</span>
+    <span class="dt">Double</span> <span class="ot">-&gt;</span>
+    <span class="dt">Double</span> <span class="ot">-&gt;</span>
+    [(<span class="dt">Double</span>,<span class="dt">Double</span>)] <span class="ot">-&gt;</span>
+    <span class="dt">QDiagram</span> b0 <span class="dt">V2</span> <span class="dt">Double</span> <span class="dt">Any</span>
+makeArrowChart f step mag l <span class="fu">=</span> position <span class="fu">$</span> zip (fmap p2 l) (fmap (arrowAtPoint f step mag) l)
+
+<span class="ot">ex1 ::</span> (<span class="dt">Renderable</span> (<span class="dt">Path</span> <span class="dt">V2</span> <span class="dt">Double</span>) b) <span class="ot">=&gt;</span> <span class="dt">QDiagram</span> b <span class="dt">V2</span> <span class="dt">Double</span> <span class="dt">Any</span>
+ex1 <span class="fu">=</span> makeArrowChart costR&#39; <span class="fl">0.01</span> <span class="dv">1</span> (locs (<span class="dt">Range</span> (<span class="fu">-</span><span class="fl">0.1</span>, <span class="fl">0.1</span>)) (<span class="dt">Range</span> (<span class="fu">-</span><span class="fl">0.1</span>, <span class="fl">0.1</span>)) <span class="dv">10</span>)
+
+<span class="ot">ex2 ::</span> (<span class="dt">Renderable</span> (<span class="dt">Path</span> <span class="dt">V2</span> <span class="dt">Double</span>) b0) <span class="ot">=&gt;</span> <span class="dt">QDiagram</span> b0 <span class="dt">V2</span> <span class="dt">Double</span> <span class="dt">Any</span>
+ex2 <span class="fu">=</span> makeArrowChart t1 <span class="fl">0.01</span> <span class="dv">1</span> (locs (<span class="dt">Range</span> (<span class="fu">-</span><span class="fl">0.1</span>, <span class="fl">0.1</span>)) (<span class="dt">Range</span> (<span class="fu">-</span><span class="fl">0.1</span>, <span class="fl">0.1</span>)) <span class="dv">10</span>)
 
 
-g m c <span class="fu">=</span> cost [m] [c] (drop <span class="dv">1</span> vs) [(drop <span class="dv">1</span> <span class="fu">$</span> L.scan (ma <span class="fl">0.99</span>) vs)]</code></pre></div>
+<span class="ot">ex3 ::</span> (<span class="dt">Renderable</span> (<span class="dt">Path</span> <span class="dt">V2</span> <span class="dt">Double</span>) b0) <span class="ot">=&gt;</span> <span class="dt">QDiagram</span> b0 <span class="dt">V2</span> <span class="dt">Double</span> <span class="dt">Any</span>
+ex3 <span class="fu">=</span> makeArrowChart rosenbrock <span class="fl">0.01</span> <span class="dv">1</span> (locs (<span class="dt">Range</span> (<span class="fu">-</span><span class="fl">0.1</span>, <span class="fl">0.1</span>)) (<span class="dt">Range</span> (<span class="fu">-</span><span class="fl">0.1</span>, <span class="fl">0.1</span>)) <span class="dv">10</span>)
+
+rosenbrock [x,y] <span class="fu">=</span> <span class="dv">100</span> <span class="fu">*</span> (y <span class="fu">-</span> x<span class="fu">^</span><span class="dv">2</span>)<span class="fu">^</span><span class="dv">2</span> <span class="fu">+</span> (x <span class="fu">-</span> <span class="dv">1</span>)<span class="fu">^</span><span class="dv">2</span></code></pre></div>
+<p><br /><span class="math display"><em>d</em><em>x</em> = <em>A</em>(<em>x</em>)<em>d</em><em>t</em> + √​<em>σ</em>(<em>t</em>)​​​<em>B</em>(<em>x</em>)<em>d</em><em>W</em><em>w</em><em>h</em><em>e</em><em>r</em><em>e</em><em>W</em> ∼ <em>p</em>?</span><br /></p>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="co">-- fileSvg &quot;other/arrows.svg&quot; (300,300) (example (Range ((-0.001), 0.001)) (Range ((-0.00000000001), 0.00000000001)) 10 0.1 # pad 1.1)</span></code></pre></div>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="ot">extrap ::</span> (<span class="dt">Double</span>, [<span class="dt">Double</span>]) <span class="ot">-&gt;</span> (<span class="dt">Double</span>, [<span class="dt">Double</span>])
+extrap (eta0, x0) <span class="fu">=</span> expand eta0 x0
+  <span class="kw">where</span>
+    (res0,_) <span class="fu">=</span> grad&#39; costR&#39; x0
+    contract eta x
+        <span class="fu">|</span> res&#39; <span class="fu">&lt;</span> res0 <span class="fu">=</span> (eta, x&#39;)
+        <span class="fu">|</span> otherwise <span class="fu">=</span> contract (eta<span class="fu">/</span><span class="dv">2</span>) x&#39;
+      <span class="kw">where</span>
+<span class="ot">        x&#39; ::</span> [<span class="dt">Double</span>]
+        x&#39; <span class="fu">=</span> x <span class="fu">.-.</span> ((eta <span class="fu">*</span>) <span class="fu">&lt;$&gt;</span> g)
+        (_,g) <span class="fu">=</span> grad&#39; costR&#39; x
+        (res&#39;,_) <span class="fu">=</span> grad&#39; costR&#39; x&#39;
+    expand eta x
+        <span class="fu">|</span> res&#39; <span class="fu">&lt;</span> res0 <span class="fu">=</span> expand (eta<span class="fu">*</span><span class="dv">2</span>) x&#39;
+        <span class="fu">|</span> otherwise <span class="fu">=</span> contract (eta<span class="fu">/</span><span class="dv">2</span>) x
+      <span class="kw">where</span>
+<span class="ot">        x&#39; ::</span> [<span class="dt">Double</span>]
+        x&#39; <span class="fu">=</span> x <span class="fu">.-.</span> ((eta <span class="fu">*</span>) <span class="fu">&lt;$&gt;</span> g)
+        (_,g) <span class="fu">=</span> grad&#39; costR&#39; x
+        (res&#39;,_) <span class="fu">=</span> grad&#39; costR&#39; x&#39;
+      
+      </code></pre></div>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="co">-- The function to use to create the vector field.</span>
+<span class="ot">t1 ::</span> (<span class="dt">Reifies</span> s <span class="dt">Tape</span>) <span class="ot">=&gt;</span> [(<span class="dt">Reverse</span> s <span class="dt">Double</span>)] <span class="ot">-&gt;</span> (<span class="dt">Reverse</span> s <span class="dt">Double</span>)
+t1 [x,y] <span class="fu">=</span> sin (y <span class="fu">+</span> <span class="dv">1</span>) <span class="fu">*</span> sin (x <span class="fu">+</span> <span class="dv">1</span>)</code></pre></div>
 <h2 id="workflow">workflow</h2>
-<pre><code>stack install &amp;&amp; readme &amp;&amp; pandoc -f markdown+lhs -t html -i readme.lhs -o index.html --filter pandoc-include</code></pre>
+<pre><code>stack install &amp;&amp; readme &amp;&amp; pandoc -f markdown+lhs -t html -i readme.lhs -o index.html --filter pandoc-include &amp;&amp; pandoc -f markdown+lhs -t markdown -i readme.lhs -o readme.md --filter pandoc-include</code></pre>
+<h2 id="todo-1">todo</h2>
+<p>https://www.quandl.com/data/YAHOO/INDEX_FVX-Treasury-Yield-5-Years-Index</p>
