@@ -45,7 +45,8 @@ library
     lens,
     linear,
     deepseq,
-    containers
+    containers,
+    tdigest
   default-extensions:
     NoImplicitPrelude,
     UnicodeSyntax,
@@ -80,7 +81,7 @@ library
     TypeFamilies,
     TypeOperators
 
-executable readme
+executable online-examples
   default-language:
     Haskell2010
   ghc-options:
@@ -90,30 +91,16 @@ executable readme
     -rtsopts
     -with-rtsopts=-N
   hs-source-dirs:
-    ./
+    ./examples
   main-is:
-    readme.lhs
+    examples.hs
   build-depends:
     base >= 4.7 && < 5,
     online,
     protolude,
     foldl,
-    cassava,
-    text,
-    bytestring,
-    formatting,
     chart-unit,
-    vector,
-    primitive,
-    containers,
-    data-default,
-    linear, 
-    lens,
-    pipes,
-    ad,
-    ListLike,
-    reflection,
-    diagrams-lib
+    tower
   default-extensions:
     NoImplicitPrelude,
     UnicodeSyntax,

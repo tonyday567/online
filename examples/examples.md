@@ -1,14 +1,13 @@
-<meta charset="utf-8">
-<link rel="stylesheet" href="https://tonyday567.github.io/other/lhs.css">
+<meta charset="utf-8"> <link rel="stylesheet" href="https://tonyday567.github.io/other/lhs.css">
 
 [online](https://tonyday567.github.io/online/index.html) [![Build Status](https://travis-ci.org/tonyday567/online.png)](https://travis-ci.org/tonyday567/online)
-================================================================================================================================================================
+===
 
 online turns a statistic (a summary or fold of data) into an online
 algorithm.
 
 derivation
-==========
+===
 
 Imagine a data stream, like an ordered indexed container or a
 time-series of measurements. An exponential moving average can be
@@ -59,3 +58,4 @@ deviation using applicative style:
 And the results over our fake data:
 
 ![](other/std.svg)
+

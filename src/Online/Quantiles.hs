@@ -9,6 +9,7 @@ module Online.Quantiles where
 import Protolude hiding (zipWith, drop, take, (++), empty, toList, map, length)
 import qualified Control.Foldl as L
 import Data.Vector as V
+import Data.TDigest
 
 data Quantiles f a = (Ord a) => Quantiles
   { qSize    :: Int
