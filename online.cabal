@@ -46,7 +46,9 @@ library
     linear,
     deepseq,
     containers,
-    tdigest
+    tdigest,
+    tower,
+    vector-algorithms
   default-extensions:
     NoImplicitPrelude,
     UnicodeSyntax,

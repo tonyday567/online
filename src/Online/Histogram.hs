@@ -2,8 +2,6 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 
-
-
 module Online.Histogram where
 
 import Protolude
