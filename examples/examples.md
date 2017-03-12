@@ -59,3 +59,9 @@ And the results over our fake data:
 
 ![](other/std.svg)
 
+recipe
+---
+
+~~~
+stack build --copy-bins --exec  "online-examples" --exec "pandoc -f markdown -t html -i examples/examples.md -o index.html --mathjax --filter pandoc-include"
+~~~

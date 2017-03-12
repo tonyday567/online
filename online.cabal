@@ -48,7 +48,8 @@ library
     containers,
     tdigest,
     tower,
-    vector-algorithms
+    vector-algorithms,
+    formatting
   default-extensions:
     NoImplicitPrelude,
     UnicodeSyntax,
@@ -102,7 +103,12 @@ executable online-examples
     protolude,
     foldl,
     chart-unit,
-    tower
+    tower,
+    mwc-random,
+    tdigest,
+    prefolds,
+    vector,
+    formatting
   default-extensions:
     NoImplicitPrelude,
     UnicodeSyntax,

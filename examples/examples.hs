@@ -1,14 +1,32 @@
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
+{-# LANGUAGE DataKinds #-}
 
 import Online
 
 import Chart hiding (Vector)
 import Tower.Prelude
 import qualified Control.Foldl as L
+import Data.TDigest
+import Data.TDigest.Internal.Tree
+import System.Random.MWC.Distributions
+import System.Random.MWC
+import qualified Prefolds as Pre
+import qualified Data.Vector as V
+
+
+mkHist :: [Double] -> IO Histogram
+mkHist cuts = do
+    g <- create
+    v <- uniformShuffle (V.fromList ([1..10000] :: [Double])) g
+    let td = forceCompress $ foldl' (flip insert) (emptyTDigest :: TDigest 25) (V.toList v)
+    let h = toHistogramWithCuts cuts $ histogram td
+    pure h
 
 main :: IO ()
 main = do
+
+    
     let fake = [0..100] <> replicate 101 100 :: [Double]
     fileSvg "other/av.svg" (300,300) $
         withChart def

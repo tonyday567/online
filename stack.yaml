@@ -15,3 +15,7 @@ packages:
     git: https://github.com/tonyday567/chart-unit.git
     commit: 25da6b33dae9dea8aa6144bcfba65b8cb0286a33
   extra-dep: true
+- location:
+    git: https://github.com/effectfully/prefolds.git
+    commit: bccf3b756272e87206b90918cd12d4599f32a44a
+  extra-dep: true

@@ -7,25 +7,37 @@
 
 module Online.Quantiles where
 
-import Tower.Prelude hiding (zipWith, drop, take, (++), empty, toList, map, length)
+import Tower.Prelude
 import qualified Control.Foldl as L
 import Data.TDigest
 import Data.TDigest.Internal.Tree
 import qualified Data.Vector.Unboxed as VU
 import qualified Data.Vector.Algorithms.Heap as VHeap
-import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty (NonEmpty, last)
+import Data.TDigest.Postprocess()
+import Online.Histogram
+import qualified Data.Map as Map
 
--- | non-online version
-tQuantiles :: [Double] -> L.Fold Double [Double]
-tQuantiles qs = L.Fold step begin done
+
+-- | a raw non-online tdigest fold
+tDigest :: L.Fold Double (TDigest 25)
+tDigest = L.Fold step begin done
   where
     step x a = insert a x
     begin = tdigest ([]::[Double]) :: TDigest 25
-    done x = fromMaybe nan <$> (\q -> quantile q (compress x)) <$> qs
+    done = identity
 
 -- | non-online version
-tHist :: L.Fold Double (Maybe (NonEmpty HistBin))
-tHist = L.Fold step begin done
+tDigestQuantiles :: [Double] -> L.Fold Double [Double]
+tDigestQuantiles qs = L.Fold step begin done
+  where
+    step x a = insert a x
+    begin = tdigest ([]::[Double]) :: TDigest 25
+    done x = fromMaybe nan . (`quantile` compress x) <$> qs
+
+-- | non-online version
+tDigestHist :: L.Fold Double (Maybe (NonEmpty HistBin))
+tDigestHist = L.Fold step begin done
   where
     step x a = insert a x
     begin = tdigest ([]::[Double]) :: TDigest 25
@@ -42,7 +54,7 @@ onlineQuantiles r qs = L.Fold step begin done
   where
     step x a = onlineInsert a x
     begin = emptyOnlineTDigest r
-    done x = fromMaybe nan <$> (\q -> quantile q t) <$> qs
+    done x = fromMaybe nan . (`quantile` t) <$> qs
       where
         (OnlineTDigest t _ _) = onlineForceCompress x
 
@@ -60,14 +72,14 @@ onlineCompress otd@(OnlineTDigest t _ _)
     | otherwise
         = otd
   where
-    compression = fromInteger 25
+    compression = 25
 
 onlineForceCompress :: OnlineTDigest -> OnlineTDigest
 onlineForceCompress otd@(OnlineTDigest Nil _ _ ) = otd
 onlineForceCompress (OnlineTDigest t n r) = OnlineTDigest t' 0 r
   where
     t' = Tower.Prelude.foldl' (flip insertCentroid) emptyTDigest $
-         fmap (\(m,w) -> (m, w*(r^^n))) $ fmap fst $ VU.toList centroids
+         (\(m,w) -> (m, w*(r^^n))) . fst <$> VU.toList centroids
     -- Centroids are shuffled based on space
     centroids :: VU.Vector (Centroid, Double)
     centroids = runST $ do
@@ -84,16 +96,31 @@ onlineDigitize r qs = L.Fold step begin done
     begin = (emptyOnlineTDigest r, nan)
     done (x,l) = bucket' qs' l
       where
-        qs' = fromMaybe nan <$> (\q -> quantile q t) <$> qs
+        qs' = fromMaybe nan . (`quantile` t) <$> qs
         (OnlineTDigest t _ _) = onlineForceCompress x
         bucket' xs l' = L.fold L.sum $ (\x' -> if x'>l' then 0 else 1) <$> xs
 
 -- | decaying histogram based on the tdigest library
-onlineHist :: Double -> L.Fold Double (Maybe (NonEmpty HistBin))
-onlineHist r = L.Fold step begin done
+onlineDigestHist :: Double -> L.Fold Double (Maybe (NonEmpty HistBin))
+onlineDigestHist r = L.Fold step begin done
   where
     step x a = onlineInsert a x
     begin = emptyOnlineTDigest r
     done x = histogram . compress $ t
       where
         (OnlineTDigest t _ _) = onlineForceCompress x
+
+toHistogramWithCuts :: [Double] -> Maybe (NonEmpty HistBin) -> Histogram
+toHistogramWithCuts cuts Nothing = Histogram cuts mempty
+toHistogramWithCuts cuts (Just bins) =
+        L.fold (L.Fold step0 (Histogram cuts mempty) done0) bins
+      where
+        step0 h (HistBin l u v _) = insertW h ((l+u)/2) v
+        done0 = identity
+
+toHistogram :: Maybe (NonEmpty HistBin) -> Histogram
+toHistogram Nothing = Histogram mempty mempty
+toHistogram h@(Just bins) = toHistogramWithCuts cuts h
+      where
+        bins'= toList bins
+        cuts = ((\(HistBin l _ _ _) -> l) <$> bins') <> [(\(HistBin _ u _ _) -> u) $ last bins]
