@@ -7,17 +7,15 @@
 
 module Online.Quantiles where
 
-import Tower.Prelude
+import NumHask.Prelude
 import qualified Control.Foldl as L
 import Data.TDigest
-import Data.TDigest.Internal.Tree
+import Data.TDigest.Internal
 import qualified Data.Vector.Unboxed as VU
 import qualified Data.Vector.Algorithms.Heap as VHeap
 import Data.List.NonEmpty (NonEmpty, last)
 import Data.TDigest.Postprocess()
-import Online.Histogram
-import qualified Data.Map as Map
-
+import NumHask.Histogram hiding (insert)
 
 -- | a raw non-online tdigest fold
 tDigest :: L.Fold Double (TDigest 25)
@@ -59,7 +57,7 @@ onlineQuantiles r qs = L.Fold step begin done
         (OnlineTDigest t _ _) = onlineForceCompress x
 
 onlineInsert' :: Double -> OnlineTDigest -> OnlineTDigest
-onlineInsert' x (OnlineTDigest td n r) = OnlineTDigest (insertCentroid (x, r^^(-(n+1))) td) (n+1) r
+onlineInsert' x (OnlineTDigest td n r) = OnlineTDigest (insertCentroid (x, r^^(-(fromIntegral $ n+1))) td) (n+1) r
 
 onlineInsert :: Double -> OnlineTDigest -> OnlineTDigest
 onlineInsert x otd = onlineCompress (onlineInsert' x otd)
@@ -67,7 +65,7 @@ onlineInsert x otd = onlineCompress (onlineInsert' x otd)
 onlineCompress :: OnlineTDigest -> OnlineTDigest
 onlineCompress otd@(OnlineTDigest Nil _ _ ) = otd
 onlineCompress otd@(OnlineTDigest t _ _)
-    | Data.TDigest.Internal.Tree.size t > relMaxSize * compression && Data.TDigest.Internal.Tree.size t > absMaxSize
+    | Data.TDigest.Internal.size t > relMaxSize * compression && Data.TDigest.Internal.size t > absMaxSize
         = onlineForceCompress otd
     | otherwise
         = otd
@@ -78,8 +76,8 @@ onlineForceCompress :: OnlineTDigest -> OnlineTDigest
 onlineForceCompress otd@(OnlineTDigest Nil _ _ ) = otd
 onlineForceCompress (OnlineTDigest t n r) = OnlineTDigest t' 0 r
   where
-    t' = Tower.Prelude.foldl' (flip insertCentroid) emptyTDigest $
-         (\(m,w) -> (m, w*(r^^n))) . fst <$> VU.toList centroids
+    t' = NumHask.Prelude.foldl' (flip insertCentroid) emptyTDigest $
+         (\(m,w) -> (m, w*(r^^fromIntegral n))) . fst <$> VU.toList centroids
     -- Centroids are shuffled based on space
     centroids :: VU.Vector (Centroid, Double)
     centroids = runST $ do
@@ -115,7 +113,7 @@ toHistogramWithCuts cuts Nothing = Histogram cuts mempty
 toHistogramWithCuts cuts (Just bins) =
         L.fold (L.Fold step0 (Histogram cuts mempty) done0) bins
       where
-        step0 h (HistBin l u v _) = insertW h ((l+u)/2) v
+        step0 h (HistBin l u _ v _) = insertW h ((l+u)/2) v
         done0 = identity
 
 toHistogram :: Maybe (NonEmpty HistBin) -> Histogram
@@ -123,4 +121,5 @@ toHistogram Nothing = Histogram mempty mempty
 toHistogram h@(Just bins) = toHistogramWithCuts cuts h
       where
         bins'= toList bins
-        cuts = ((\(HistBin l _ _ _) -> l) <$> bins') <> [(\(HistBin _ u _ _) -> u) $ last bins]
+        cuts = ((\(HistBin l _ _ _ _) -> l) <$> bins') <> [(\(HistBin _ u _ _ _) -> u) $ last bins]
+

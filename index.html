@@ -1,9 +1,12 @@
-<p><meta charset="utf-8"> <link rel="stylesheet" href="https://tonyday567.github.io/other/lhs.css"></p>
-<h1 id="online-build-status"><a href="https://tonyday567.github.io/online/index.html">online</a> <a href="https://travis-ci.org/tonyday567/online"><img src="https://travis-ci.org/tonyday567/online.png" alt="Build Status" /></a></h1>
+<meta charset="utf-8"> <link rel="stylesheet" href="https://tonyday567.github.io/other/lhs.css">
+<script type="text/javascript" async
+  src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML">
+</script>
+<h1 id="online-build-status"><a href="https://github.com/tonyday567/online">online</a> <a href="https://travis-ci.org/tonyday567/online"><img src="https://travis-ci.org/tonyday567/online.png" alt="Build Status" /></a></h1>
 <p>online turns a statistic (a summary or fold of data) into an online algorithm.</p>
 <h1 id="derivation">derivation</h1>
 <p>Imagine a data stream, like an ordered indexed container or a time-series of measurements. An exponential moving average can be calculated as a repeated iteration over a stream of xs:</p>
-<p><span class="math display">\[ ema_t = ema_{t-1} * 0.9 + x_t * 0.1\]</span></p>
+<p><span class="math display">\[ ema_t = ema_{t-1} * 0.9 + x_t * 0.1 \]</span></p>
 <p>The 0.1 is akin to the learning rate in machine learning, or 0.9 can be thought of as a decaying or a rate of forgetting. An exponential moving average learns about what the value of x has been lately, where lately is, on average, about 1/0.1 = 10 x's ago. All very neat.</p>
 <p>The first bit of neat is speed. There's 2 times and a plus. The next is space: an ema is representing the recent xs in a size as big as a single x. Compare that with a simple moving average where you have to keep the history of the last n xs around to keep up (just try it).</p>
 <p>It's so neat, it's probably a viable monoidal category all by itself.</p>
@@ -29,5 +32,3 @@ std r = (\s ss -&gt; sqrt (ss - s**2)) &lt;$&gt; ma r &lt;*&gt; sqma r
 <img src="other/std.svg" />
 
 </div>
-<h2 id="recipe">recipe</h2>
-<pre><code>stack build --copy-bins --exec  &quot;online-examples&quot; --exec &quot;pandoc -f markdown -t html -i examples/examples.md -o index.html --mathjax --filter pandoc-include&quot;</code></pre>

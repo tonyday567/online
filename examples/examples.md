@@ -1,6 +1,10 @@
-<meta charset="utf-8"> <link rel="stylesheet" href="https://tonyday567.github.io/other/lhs.css">
+<meta charset="utf-8"> 
+<link rel="stylesheet" href="https://tonyday567.github.io/other/lhs.css">
+<script type="text/javascript" async
+  src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML">
+</script>
 
-[online](https://tonyday567.github.io/online/index.html) [![Build Status](https://travis-ci.org/tonyday567/online.png)](https://travis-ci.org/tonyday567/online)
+[online](https://github.com/tonyday567/online) [![Build Status](https://travis-ci.org/tonyday567/online.png)](https://travis-ci.org/tonyday567/online)
 ===
 
 online turns a statistic (a summary or fold of data) into an online
@@ -13,7 +17,7 @@ Imagine a data stream, like an ordered indexed container or a
 time-series of measurements. An exponential moving average can be
 calculated as a repeated iteration over a stream of xs:
 
-$$ ema_t = ema_{t-1} * 0.9 + x_t * 0.1$$
+$$ ema_t = ema_{t-1} * 0.9 + x_t * 0.1 $$
 
 The 0.1 is akin to the learning rate in machine learning, or 0.9 can be
 thought of as a decaying or a rate of forgetting. An exponential moving
@@ -58,10 +62,3 @@ deviation using applicative style:
 And the results over our fake data:
 
 ![](other/std.svg)
-
-recipe
----
-
-~~~
-stack build --copy-bins --exec  "online-examples" --exec "pandoc -f markdown -t html -i examples/examples.md -o index.html --mathjax --filter pandoc-include"
-~~~

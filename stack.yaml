@@ -1,21 +1,10 @@
-resolver: lts-7.19
+resolver: lts-8.9
 
-# Local packages, usually specified by relative directory name
 packages:
 - '.'
-- location:
-    git: https://github.com/futurice/haskell-tdigest
-    commit: 7b16d730b84b1fca2f97dfa3862d5781856d19e9
-  extra-dep: true
-- location:
-    git: https://github.com/tonyday567/tower.git
-    commit: c32a23dfab3b1fe3c16bf587f6eac773e9e530dd
-  extra-dep: true
-- location:
-    git: https://github.com/tonyday567/chart-unit.git
-    commit: 25da6b33dae9dea8aa6144bcfba65b8cb0286a33
-  extra-dep: true
-- location:
-    git: https://github.com/effectfully/prefolds.git
-    commit: bccf3b756272e87206b90918cd12d4599f32a44a
-  extra-dep: true
+
+extra-deps:
+  - tdigest-0.1
+  - numhask-0.0.4
+  - numhask-range-0.0.2
+  - chart-unit-0.3.1

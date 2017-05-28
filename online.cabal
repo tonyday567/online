@@ -1,7 +1,7 @@
 name:
   online
 version:
-  0.1.0.0
+  0.1.1
 synopsis:
   online statistics
 description:
@@ -35,8 +35,7 @@ library
   exposed-modules:
     Online,
     Online.Stats,
-    Online.Quantiles,
-    Online.Histogram
+    Online.Quantiles
   build-depends:
     base >= 4.7 && < 5,
     protolude,
@@ -47,9 +46,10 @@ library
     deepseq,
     containers,
     tdigest,
-    tower,
+    numhask,
     vector-algorithms,
-    formatting
+    formatting,
+    numhask-range
   default-extensions:
     NoImplicitPrelude,
     UnicodeSyntax,
@@ -103,12 +103,12 @@ executable online-examples
     protolude,
     foldl,
     chart-unit,
-    tower,
+    numhask,
     mwc-random,
     tdigest,
-    prefolds,
     vector,
-    formatting
+    formatting,
+    numhask-range
   default-extensions:
     NoImplicitPrelude,
     UnicodeSyntax,
