@@ -9,4 +9,6 @@ See https://tonyday567.github.io/online/index.html for motivation.
 recipe
 ---
 
-    stack build --copy-bins --exec  "online-examples" --exec "pandoc -f markdown -t html -i examples/examples.md -o index.html --mathjax --filter pandoc-include"
+~~~
+stack build --test --exec "$(stack path --local-install-root)/bin/online-examples" --exec "$(stack path --local-bin)/pandoc -f markdown -i example/examples.md -t html -o index.html --filter pandoc-include --mathjax" --file-watch
+~~~

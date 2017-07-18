@@ -56,6 +56,15 @@ onlineQuantiles r qs = L.Fold step begin done
       where
         (OnlineTDigest t _ _) = onlineForceCompress x
 
+median :: Double -> L.Fold Double Double
+median r = L.Fold step begin done
+  where
+    step x a = onlineInsert a x
+    begin = emptyOnlineTDigest r
+    done x = fromMaybe nan (quantile 0.5 t)
+        where
+          (OnlineTDigest t _ _) = onlineForceCompress x
+
 onlineInsert' :: Double -> OnlineTDigest -> OnlineTDigest
 onlineInsert' x (OnlineTDigest td n r) = OnlineTDigest (insertCentroid (x, r^^(-(fromIntegral $ n+1))) td) (n+1) r
 
@@ -90,7 +99,7 @@ onlineForceCompress (OnlineTDigest t n r) = OnlineTDigest t' 0 r
 onlineDigitize :: Double -> [Double] -> L.Fold Double Int
 onlineDigitize r qs = L.Fold step begin done
   where
-    step (x,l) a = (onlineInsert a x, l)
+    step (x,_) a = (onlineInsert a x, a)
     begin = (emptyOnlineTDigest r, nan)
     done (x,l) = bucket' qs' l
       where

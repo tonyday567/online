@@ -35,20 +35,16 @@ library
   exposed-modules:
     Online,
     Online.Stats,
+    Online.StatsL1,
     Online.Quantiles
   build-depends:
     base >= 4.7 && < 5,
     protolude,
     foldl,
     vector,
-    lens,
-    linear,
-    deepseq,
-    containers,
     tdigest,
     numhask,
     vector-algorithms,
-    formatting,
     numhask-range
   default-extensions:
     NoImplicitPrelude,
@@ -100,15 +96,9 @@ executable online-examples
   build-depends:
     base >= 4.7 && < 5,
     online,
-    protolude,
     foldl,
     chart-unit,
-    numhask,
-    mwc-random,
-    tdigest,
-    vector,
-    formatting,
-    numhask-range
+    numhask
   default-extensions:
     NoImplicitPrelude,
     UnicodeSyntax,
