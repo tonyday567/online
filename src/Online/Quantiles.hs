@@ -13,9 +13,8 @@ import Data.TDigest
 import Data.TDigest.Internal
 import qualified Data.Vector.Unboxed as VU
 import qualified Data.Vector.Algorithms.Heap as VHeap
-import Data.List.NonEmpty (NonEmpty, last)
+import Data.List.NonEmpty (NonEmpty)
 import Data.TDigest.Postprocess()
-import NumHask.Histogram hiding (insert)
 
 -- | a raw non-online tdigest fold
 tDigest :: L.Fold Double (TDigest 25)
@@ -116,19 +115,3 @@ onlineDigestHist r = L.Fold step begin done
     done x = histogram . compress $ t
       where
         (OnlineTDigest t _ _) = onlineForceCompress x
-
-toHistogramWithCuts :: [Double] -> Maybe (NonEmpty HistBin) -> Histogram
-toHistogramWithCuts cuts Nothing = Histogram cuts mempty
-toHistogramWithCuts cuts (Just bins) =
-        L.fold (L.Fold step0 (Histogram cuts mempty) done0) bins
-      where
-        step0 h (HistBin l u _ v _) = insertW h ((l+u)/2) v
-        done0 = identity
-
-toHistogram :: Maybe (NonEmpty HistBin) -> Histogram
-toHistogram Nothing = Histogram mempty mempty
-toHistogram h@(Just bins) = toHistogramWithCuts cuts h
-      where
-        bins'= toList bins
-        cuts = ((\(HistBin l _ _ _ _) -> l) <$> bins') <> [(\(HistBin _ u _ _ _) -> u) $ last bins]
-

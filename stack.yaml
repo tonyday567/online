@@ -1,10 +1,7 @@
-resolver: lts-8.9
+resolver: lts-8.23
 
 packages:
-- '.'
+  - '.'
 
 extra-deps:
-  - tdigest-0.1
-  - numhask-0.0.4
-  - numhask-range-0.0.2
-  - chart-unit-0.3.1
+  - numhask-0.0.7
