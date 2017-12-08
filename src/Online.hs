@@ -1,8 +1,10 @@
 -- | online library
-module Online (
-    module X
-) where
+module Online
+  ( module Online.Averages
+  , module Online.Medians
+  , module Online.Quantiles
+  ) where
 
-import Online.Stats as X
-import Online.StatsL1 as X
-import Online.Quantiles as X
+import Online.Quantiles
+import Online.Averages
+import Online.Medians

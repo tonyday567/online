@@ -1,7 +1,6 @@
-resolver: lts-8.23
+resolver: nightly-2017-11-22
 
 packages:
   - '.'
 
-extra-deps:
-  - numhask-0.0.7
+extra-deps: []

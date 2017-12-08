@@ -1,0 +1,91 @@
+name: online
+version: '0.2.0.1'
+synopsis: online statistics
+description: transformation of statistics to online algorithms
+category: statistics
+author: Tony Day
+maintainer: tonyday567@gmail.com
+copyright: Tony Day
+license: BSD3
+github: tonyday567/online
+extra-source-files:
+- readme.md
+- stack.yaml
+default-extensions:
+- NegativeLiterals
+- NoImplicitPrelude
+- OverloadedStrings
+- UnicodeSyntax
+dependencies:
+- base >=4.7 && <5
+- protolude
+library:
+  source-dirs: src
+  ghc-options: -Wall
+  exposed-modules:
+  - Online
+  - Online.Averages
+  - Online.Medians
+  - Online.Quantiles
+  dependencies:
+  - foldl
+  - vector
+  - tdigest
+  - numhask
+  - vector-algorithms
+executables:
+  online-bench:
+    main: bench.hs
+    source-dirs: bench
+    default-extensions:
+    - BangPatterns
+    - BinaryLiterals
+    - DeriveFoldable
+    - DeriveFunctor
+    - DeriveGeneric
+    - DeriveTraversable
+    - DisambiguateRecordFields
+    - EmptyCase
+    - FlexibleContexts
+    - FlexibleInstances
+    - FunctionalDependencies
+    - GADTSyntax
+    - InstanceSigs
+    - KindSignatures
+    - LambdaCase
+    - MonadComprehensions
+    - MultiParamTypeClasses
+    - MultiWayIf
+    - ParallelListComp
+    - PartialTypeSignatures
+    - PatternSynonyms
+    - RankNTypes
+    - RecordWildCards
+    - RecursiveDo
+    - ScopedTypeVariables
+    - TupleSections
+    - TypeFamilies
+    - TypeOperators
+    ghc-options:
+    - -O2
+    - -funbox-strict-fields
+    - -fforce-recomp
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - online
+    - foldl
+    - numhask
+    - perf
+    - formatting
+    - optparse-generic
+    - text
+tests:
+  test:
+    main: test.hs
+    source-dirs: test
+    dependencies:
+    - tasty
+    - doctest
+    - online

@@ -1,85 +1,80 @@
-name: online
-version: 0.2.0
-synopsis:
-  online statistics
-description:
-  transformation of statistics to online algorithms
-homepage:
-  https://github.com/tonyday567/online
-license:
-  BSD3
-license-file:
-  LICENSE
-author:
-  Tony Day
-maintainer:
-  tonyday567@gmail.com
-copyright:
-  Tony Day
-category:
-  statistics            
-build-type:
-  Simple
-cabal-version:
-  >=1.10
+-- This file has been generated from package.yaml by hpack version 0.18.1.
+--
+-- see: https://github.com/sol/hpack
+
+name:           online
+version:        0.2.0.1
+synopsis:       online statistics
+description:    transformation of statistics to online algorithms
+homepage:       https://github.com/tonyday567/online#readme
+bug-reports:    https://github.com/tonyday567/online/issues
+license:        BSD3
+license-file:   LICENSE
+author:         Tony Day
+maintainer:     tonyday567@gmail.com
+copyright:      Tony Day
+category:       statistics
+build-type:     Simple
+cabal-version:  >= 1.10
+
 extra-source-files:
   readme.md
   stack.yaml
 
+source-repository head
+  type: git
+  location: https://github.com/tonyday567/online
+
 library
-  default-language:
-    Haskell2010
-  ghc-options:
-    -Wall
+  default-language: Haskell2010
+  ghc-options: -Wall
   hs-source-dirs:
     src
   exposed-modules:
-    Online,
-    Online.Stats,
-    Online.StatsL1,
+    Online
+    Online.Averages
+    Online.Medians
     Online.Quantiles
+  other-modules:
+    Paths_online
   build-depends:
-    base >= 4.7 && < 5,
+    base >=4.7 && <5,
     protolude,
     foldl,
     vector,
     tdigest,
     numhask,
     vector-algorithms
-  default-extensions:
-    NoImplicitPrelude,
-    UnicodeSyntax,
-    BangPatterns,
-    BinaryLiterals,
-    DeriveFoldable,
-    DeriveFunctor,
-    DeriveGeneric,
-    DeriveTraversable,
-    DisambiguateRecordFields,
-    EmptyCase,
-    FlexibleContexts,
-    FlexibleInstances,
-    FunctionalDependencies,
-    GADTSyntax,
-    InstanceSigs,
-    KindSignatures,
-    LambdaCase,
-    MonadComprehensions,
-    MultiParamTypeClasses,
-    MultiWayIf,
-    NegativeLiterals,
-    OverloadedStrings,
-    ParallelListComp,
-    PartialTypeSignatures,
-    PatternSynonyms,
-    RankNTypes,
-    RecordWildCards,
-    RecursiveDo,
-    ScopedTypeVariables,
-    TupleSections,
-    TypeFamilies,
-    TypeOperators
+  default-extensions: NegativeLiterals NoImplicitPrelude OverloadedStrings UnicodeSyntax
 
-source-repository head
-  type:     git
-  location: https://github.com/tonyday567/online
+executable online-bench
+  default-language: Haskell2010
+  ghc-options: -O2 -funbox-strict-fields -fforce-recomp -threaded -rtsopts -with-rtsopts=-N
+  hs-source-dirs:
+    bench
+  main-is: bench.hs
+  build-depends:
+    base >=4.7 && <5,
+    protolude,
+    online,
+    foldl,
+    numhask,
+    perf,
+    formatting,
+    optparse-generic,
+    text
+  default-extensions: NegativeLiterals NoImplicitPrelude OverloadedStrings UnicodeSyntax BangPatterns BinaryLiterals DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable DisambiguateRecordFields EmptyCase FlexibleContexts FlexibleInstances FunctionalDependencies GADTSyntax InstanceSigs KindSignatures LambdaCase MonadComprehensions MultiParamTypeClasses MultiWayIf ParallelListComp PartialTypeSignatures PatternSynonyms RankNTypes RecordWildCards RecursiveDo ScopedTypeVariables TupleSections TypeFamilies TypeOperators
+
+test-suite test
+  default-language: Haskell2010
+  type: exitcode-stdio-1.0
+  hs-source-dirs:
+    test
+  main-is: test.hs
+  build-depends:
+    base >=4.7 && <5,
+    protolude,
+    tasty,
+    doctest,
+    online
+  default-extensions: NegativeLiterals NoImplicitPrelude OverloadedStrings UnicodeSyntax

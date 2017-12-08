@@ -1,0 +1,46 @@
+<meta charset="utf-8"> <link rel="stylesheet" href="other/lhs.css">
+<script type="text/javascript" async
+  src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML">
+</script>
+<h1 id="online"><a href="https://github.com/tonyday567/online">online</a></h1>
+<p><a href="https://travis-ci.org/tonyday567/online"><img src="https://travis-ci.org/tonyday567/online.svg" alt="Build Status" /></a> <a href="https://hackage.haskell.org/package/online"><img src="https://img.shields.io/hackage/v/online.svg" alt="Hackage" /></a> <a href="http://stackage.org/lts/package/online"><img src="https://www.stackage.org/package/online/badge/lts" alt="lts" /></a> <a href="http://stackage.org/nightly/package/online"><img src="https://www.stackage.org/package/online/badge/nightly" alt="nightly" /></a></p>
+<p>online turns a statistic (in haskell this can usually be thought of as a fold of a foldable) into an online algorithm.</p>
+<h1 id="motivation">motivation</h1>
+<p>Imagine a data stream, like an ordered indexed container or a time-series of measurements. An exponential moving average can be calculated as a repeated iteration over a stream of xs:</p>
+<p><span class="math display">\[ ema_t = ema_{t-1} * 0.9 + x_t * 0.1 \]</span></p>
+<p>The 0.1 is akin to the learning rate in machine learning, or 0.9 can be thought of as a decaying or a rate of forgetting. An exponential moving average learns about what the value of x has been lately, where lately is, on average, about 1/0.1 = 10 x's ago. All very neat.</p>
+<p>The first bit of neat is speed. There's 2 times and a plus. The next is space: an ema is representing the recent xs in a size as big as a single x. Compare that with a simple moving average where you have to keep the history of the last n xs around to keep up (just try it).</p>
+<p>It's so neat, it's probably a viable monoidal category all by itself.</p>
+<h1 id="online-1">online</h1>
+<p>Haskell allows us to abstract the compound ideas in an ema and create polymorphic routines over a wide variety of statistics, so that they all retain these properties of speed, space and rigour.</p>
+<pre><code>av xs = L.fold (online identity (.* 0.9)) xs
+-- av [0..10] == 6.030559401413827
+-- av [0..100] == 91.00241448887785</code></pre>
+<p><code>online identity (.* 0.9)</code> is how you express an ema with a decay rate of 0.9.</p>
+<p>online works for any statistic. Here's the construction of standard deviation using applicative style:</p>
+<pre><code>std :: Double -&gt; L.Fold Double Double
+std r = (\s ss -&gt; sqrt (ss - s**2)) &lt;$&gt; ma r &lt;*&gt; sqma r
+  where
+    ma r = online identity (.*r)
+    sqma r = online (**2) (.*r)</code></pre>
+<h1 id="perf"><a href="https://hackage.haskell.org/package/perf">perf</a></h1>
+<p>1 cycle = 0.4 nanoseconds.</p>
+<pre><code>sum to 1,000
+run                       first     2nd     3rd     4th     5th  40th %
+sumInt [0..]             8.69e3  1.59e3  1.54e3  1.60e3  1.64e3 1.57e3 cycles
+sumDouble [0..]          3.00e5  2.82e5  3.27e5  2.99e5  2.61e5 9.38e4 cycles
+sumPoly [0..]            9.34e4  1.05e5  1.09e5  1.18e5  1.64e5 7.81e4 cycles
+sum Int                  1.67e4  1.17e4  1.16e4  1.17e4  1.16e4 1.17e4 cycles
+sum Double               2.63e4  1.18e4  1.17e4  1.16e4  1.16e4 1.16e4 cycles
+sum Poly                 1.28e4  1.18e4  1.17e4  1.17e4  1.18e4 1.17e4 cycles
+fold sum                 1.23e4  1.19e4  1.18e4  1.17e4  1.18e4 1.18e4 cycles
+fold av                  1.23e4  1.18e4  1.18e4  1.18e4  1.18e4 1.18e4 cycles
+fold ma                  1.24e4  1.19e4  1.20e4  1.19e4  1.19e4 1.19e4 cycles
+fold std                 2.04e5  1.15e5  6.14e5  1.16e5  1.16e5 1.12e5 cycles
+fold maL1                9.11e4  8.32e4  1.27e5  3.34e5  1.04e5 1.02e5 cycles
+fold absmaL1             6.82e4  6.71e4  6.64e4  6.66e4  2.97e5 6.65e4 cycles</code></pre>
+<h1 id="recipe">recipe</h1>
+<pre><code>stack build --test --exec &quot;$(stack path --local-install-root)/bin/online-bench&quot; --exec &quot;$(stack path --local-bin)/pandoc -f markdown -i other/header.md other/readme_.md other/footer.md -t html -o index.html --filter pandoc-include --mathjax&quot; --exec &quot;$(stack path --local-bin)/pandoc -f markdown -i other/readme_.md -t markdown -o readme.md --filter pandoc-include --mathjax&quot; --file-watch</code></pre>
+<div class="footer">
+<p>Powered by <a href="https://haskell-lang.org/">haskell</a>, <a href="https://docs.haskellstack.org/en/stable/README/">stack</a> and <a href="http://pandoc.org/">pandoc</a>.</p>
+</div>
