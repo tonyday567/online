@@ -1,6 +1,8 @@
--- This file has been generated from package.yaml by hpack version 0.18.1.
+-- This file has been generated from package.yaml by hpack version 0.20.0.
 --
 -- see: https://github.com/sol/hpack
+--
+-- hash: 8f6cda9db842d4a3c780204bab061951873e74540b96dd953d2ff153edafe3e6
 
 name:           online
 version:        0.2.0.1
@@ -36,14 +38,15 @@ library
     Online.Medians
     Online.Quantiles
   other-modules:
+    Online.Deaverage
     Paths_online
   build-depends:
     base >=4.7 && <5,
-    protolude,
     foldl,
-    vector,
-    tdigest,
     numhask,
+    protolude,
+    tdigest,
+    vector,
     vector-algorithms
   default-extensions: NegativeLiterals NoImplicitPrelude OverloadedStrings UnicodeSyntax
 
@@ -55,14 +58,16 @@ executable online-bench
   main-is: bench.hs
   build-depends:
     base >=4.7 && <5,
-    protolude,
-    online,
     foldl,
-    numhask,
-    perf,
     formatting,
+    numhask,
+    online,
     optparse-generic,
+    perf,
+    protolude,
     text
+  other-modules:
+    Paths_online
   default-extensions: NegativeLiterals NoImplicitPrelude OverloadedStrings UnicodeSyntax BangPatterns BinaryLiterals DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable DisambiguateRecordFields EmptyCase FlexibleContexts FlexibleInstances FunctionalDependencies GADTSyntax InstanceSigs KindSignatures LambdaCase MonadComprehensions MultiParamTypeClasses MultiWayIf ParallelListComp PartialTypeSignatures PatternSynonyms RankNTypes RecordWildCards RecursiveDo ScopedTypeVariables TupleSections TypeFamilies TypeOperators
 
 test-suite test
@@ -73,8 +78,10 @@ test-suite test
   main-is: test.hs
   build-depends:
     base >=4.7 && <5,
-    protolude,
-    tasty,
     doctest,
-    online
+    online,
+    protolude,
+    tasty
+  other-modules:
+    Paths_online
   default-extensions: NegativeLiterals NoImplicitPrelude OverloadedStrings UnicodeSyntax

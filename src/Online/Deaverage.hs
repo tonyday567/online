@@ -1,8 +1,8 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 
 -- | online statistics based on a moving average
-module Online.Averages
-  ( Averager
+module Online.Deaverage
+  ( Deaverager
   , online
     -- * online statistics
   , ma
@@ -23,22 +23,22 @@ import Control.Foldl (Fold(..))
 import NumHask.Prelude
 
 -- | Most common statistics are averages.
-newtype Averager a b = Averager
-  { _averager :: (a, b)
+newtype Deaverager a b = Deaverager
+  { _deaverager :: (a, b)
   }
 
-instance (Monoid a, Monoid b) => Monoid (Averager a b) where
-  mempty = Averager (mempty, mempty)
-  mappend (Averager (s, c)) (Averager (s', c')) =
-    Averager (mappend s s', mappend c c')
+instance (Monoid a, Monoid b) => Monoid (Deaverager a b) where
+  mempty = Deaverager (mempty, mempty)
+  mappend (Deaverager (s, c)) (Deaverager (s', c')) =
+    Deaverager (mappend s s', mappend c c')
 
 -- | online takes a function and turns it into a `Control.Foldl.Fold` where the step is an incremental update of the (isomorphic) statistic.
 online :: (Field b) => (a -> b) -> (b -> b) -> Fold a b
 online f g = Fold step begin extract
   where
-    begin = Averager (zero, zero)
-    step (Averager (s, c)) a = Averager (g $ s + f a, g $ c + one)
-    extract (Averager (s, c)) = s / c
+    begin = Deaverager (zero, zero)
+    step (Deaverager (s, c)) a = Deaverager (g $ s + f a, g $ c + one)
+    extract (Deaverager (s, c)) = s / c
 {-# INLINABLE online #-}
 
 -- $setup
