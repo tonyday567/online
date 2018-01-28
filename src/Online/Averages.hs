@@ -15,6 +15,7 @@ module Online.Averages
   , beta
   , alpha
   , autocorr
+  , mconst
   ) where
 
 import qualified Control.Foldl as L
@@ -161,3 +162,7 @@ autocorr central corrf =
               done = dDone . snd
           in Fold step begin done
 {-# INLINABLE autocorr #-}
+
+-- | a constant fold
+mconst :: (Field a) => a -> L.Fold a a
+mconst a = L.Fold (\() _ -> ()) () (const a)

@@ -9,7 +9,6 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# OPTIONS_GHC -fno-warn-type-defaults #-}
 
--- import Online
 import Online.Averages
 import Online.Medians
 import Options.Generic
@@ -18,6 +17,7 @@ import Perf
 import Formatting
 import qualified Data.Text as Text
 import qualified Control.Foldl as L
+import Data.Scientific
 
 data Opts = Opts
   { runs :: Maybe Int -- <?> "number of runs"
@@ -25,6 +25,9 @@ data Opts = Opts
   } deriving (Generic, Show)
 
 instance ParseRecord Opts
+
+expt' :: Int -> Format r (Scientific -> r)
+expt' x = scifmt Exponent (Just x)
 
 code :: [Text] -> Text
 code cs = "\n```\n" <> Text.intercalate "\n" cs <> "\n```\n"
@@ -68,11 +71,11 @@ formatRun :: [Cycle] -> Text -> Text
 formatRun cs label =
     sformat
           ((right 24 ' ' %. stext) % stext %
-           (left 7 ' ' %. prec 3) % " cycles")
+           (left 7 ' ' %. expt' 3) % " cycles")
           label
-          (Text.intercalate " " $ sformat (left 7 ' ' %. prec 3) <$>
-           take 5 cs)
-          (percentile 0.4 cs)
+          (Text.intercalate " " $ sformat (left 7 ' ' %. expt' 3) <$>
+           (\x -> scientific (fromIntegral x) 0) <$> take 5 cs)
+          (fromFloatDigits $ percentile 0.4 cs)
 
 formatRunHeader :: Text
 formatRunHeader =
@@ -116,7 +119,7 @@ tick_Test f = do
       , "99th perc:  " <> sformat (fixed 2) tick99
       , "40th perc:  " <> sformat (fixed 2) tick40
       , "[min, 10th, 20th, .. 90th, max]:"
-      , mconcat (sformat (" " % prec 4) <$> qticks)
+      , mconcat (sformat (" " % expt' 4) . fromFloatDigits <$> qticks)
       ]
 
 fMono :: Int -> Int

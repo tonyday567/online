@@ -1,5 +1,5 @@
 name: online
-version: '0.2.0.1'
+version: '0.2.1.0'
 synopsis: online statistics
 description: transformation of statistics to online algorithms
 category: statistics
@@ -80,6 +80,7 @@ executables:
     - perf
     - formatting
     - optparse-generic
+    - scientific
     - text
 tests:
   test:
