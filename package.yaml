@@ -88,5 +88,6 @@ tests:
     main: test.hs
     source-dirs: test
     dependencies:
+    - base >=4.7 && <5
     - tasty
     - doctest
