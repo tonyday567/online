@@ -17,7 +17,6 @@ default-extensions:
 - OverloadedStrings
 - UnicodeSyntax
 dependencies:
-- base >=4.7 && <5
 - protolude
 library:
   source-dirs: src
@@ -28,6 +27,7 @@ library:
   - Online.Medians
   - Online.Quantiles
   dependencies:
+  - base >=4.7 && <5
   - foldl
   - vector
   - tdigest
@@ -74,6 +74,7 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
+    - base >=4.7 && <5
     - online
     - foldl
     - numhask
@@ -89,4 +90,3 @@ tests:
     dependencies:
     - tasty
     - doctest
-    - online
