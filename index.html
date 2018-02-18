@@ -27,18 +27,18 @@ std r = (\s ss -&gt; sqrt (ss - s**2)) &lt;$&gt; ma r &lt;*&gt; sqma r
 <p>1 cycle = 0.4 nanoseconds.</p>
 <pre><code>sum to 1,000
 run                       first     2nd     3rd     4th     5th  40th %
-sumInt [0..]             8.69e3  1.59e3  1.54e3  1.60e3  1.64e3 1.57e3 cycles
-sumDouble [0..]          3.00e5  2.82e5  3.27e5  2.99e5  2.61e5 9.38e4 cycles
-sumPoly [0..]            9.34e4  1.05e5  1.09e5  1.18e5  1.64e5 7.81e4 cycles
-sum Int                  1.67e4  1.17e4  1.16e4  1.17e4  1.16e4 1.17e4 cycles
-sum Double               2.63e4  1.18e4  1.17e4  1.16e4  1.16e4 1.16e4 cycles
-sum Poly                 1.28e4  1.18e4  1.17e4  1.17e4  1.18e4 1.17e4 cycles
-fold sum                 1.23e4  1.19e4  1.18e4  1.17e4  1.18e4 1.18e4 cycles
-fold av                  1.23e4  1.18e4  1.18e4  1.18e4  1.18e4 1.18e4 cycles
-fold ma                  1.24e4  1.19e4  1.20e4  1.19e4  1.19e4 1.19e4 cycles
-fold std                 2.04e5  1.15e5  6.14e5  1.16e5  1.16e5 1.12e5 cycles
-fold maL1                9.11e4  8.32e4  1.27e5  3.34e5  1.04e5 1.02e5 cycles
-fold absmaL1             6.82e4  6.71e4  6.64e4  6.66e4  2.97e5 6.65e4 cycles</code></pre>
+sumInt [0..]            1.008e4 1.658e3 1.560e3 1.540e3 1.612e31.618e3 cycles
+sumDouble [0..]         4.790e5 5.350e5 3.570e5 3.189e5 3.737e59.083e4 cycles
+sumPoly [0..]           9.256e4 9.012e4 9.000e4 8.985e4 8.979e47.757e4 cycles
+sum Int                 1.662e4 1.182e4 1.169e4 1.170e4 1.175e41.163e4 cycles
+sum Double              2.700e4 1.172e4 1.166e4 1.161e4 1.163e41.163e4 cycles
+sum Poly                1.232e4 1.178e4 1.174e4 1.178e4 1.178e41.191e4 cycles
+fold sum                1.229e4 1.176e4 1.181e4 1.175e4 1.181e41.176e4 cycles
+fold av                 1.241e4 1.187e4 1.180e4 1.184e4 1.183e41.179e4 cycles
+fold ma                 1.285e4 1.196e4 1.188e4 1.497e4 1.344e41.291e4 cycles
+fold std                7.486e5 4.159e5 1.235e6 1.811e5 1.431e51.124e5 cycles
+fold maL1               9.295e4 8.391e4 1.106e5 3.845e5 8.382e48.319e4 cycles
+fold absmaL1            6.897e4 6.648e4 6.660e4 6.699e4 3.197e56.656e4 cycles</code></pre>
 <h1 id="recipe">recipe</h1>
 <pre><code>stack build --test --exec &quot;$(stack path --local-install-root)/bin/online-bench&quot; --exec &quot;$(stack path --local-bin)/pandoc -f markdown -i other/header.md other/readme_.md other/footer.md -t html -o index.html --filter pandoc-include --mathjax&quot; --exec &quot;$(stack path --local-bin)/pandoc -f markdown -i other/readme_.md -t markdown -o readme.md --filter pandoc-include --mathjax&quot; --file-watch</code></pre>
 <div class="footer">
