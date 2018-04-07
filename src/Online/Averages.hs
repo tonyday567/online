@@ -27,10 +27,13 @@ newtype Averager a b = Averager
   { _averager :: (a, b)
   }
 
+instance (Semigroup a, Monoid b) => Semigroup (Averager a b) where
+  (Averager (s, c)) <> (Averager (s', c')) =
+    Averager (s <> s', c <> c')
+
 instance (Monoid a, Monoid b) => Monoid (Averager a b) where
   mempty = Averager (mempty, mempty)
-  mappend (Averager (s, c)) (Averager (s', c')) =
-    Averager (mappend s s', mappend c c')
+  mappend = (<>)
 
 -- | online takes a function and turns it into a `Control.Foldl.Fold` where the step is an incremental update of the (isomorphic) statistic.
 online :: (Field b) => (a -> b) -> (b -> b) -> Fold a b

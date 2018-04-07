@@ -1,6 +1,12 @@
-resolver: nightly-2017-11-22
+resolver: nightly-2018-04-05
 
 packages:
   - '.'
 
-extra-deps: []
+extra-deps:
+  - numhask-0.2.0.0
+  - numhask-prelude-0.0.1.0
+  - perf-0.4.0.0
+  - tdigest-0.1
+
+allow-newer: true

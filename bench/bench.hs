@@ -12,12 +12,14 @@
 import Online.Averages
 import Online.Medians
 import Options.Generic
-import NumHask.Prelude hiding ((%))
-import Perf
+import NumHask.Prelude hiding ((%), fromIntegral)
+import Protolude (fromIntegral)
+import Perf hiding (zero, Additive)
 import Formatting
 import qualified Data.Text as Text
 import qualified Control.Foldl as L
 import Data.Scientific
+import Data.TDigest
 
 data Opts = Opts
   { runs :: Maybe Int -- <?> "number of runs"
@@ -25,6 +27,22 @@ data Opts = Opts
   } deriving (Generic, Show)
 
 instance ParseRecord Opts
+
+-- | compute deciles
+--
+-- > c5 <- decile 5 <$> ticks n f a
+--
+deciles :: (Functor f, Foldable f) => Int -> f Cycle -> [Double]
+deciles n xs =
+  (\x -> fromMaybe 0 $ quantile x (tdigest (fromIntegral <$> xs) :: TDigest 25)) <$>
+  ((/ fromIntegral n) . fromIntegral <$> [0 .. n]) :: [Double]
+
+-- | compute a percentile
+--
+-- > c <- percentile 0.4 . fst <$> ticks n f a
+--
+percentile :: (Functor f, Foldable f) => Double -> f Cycle -> Double
+percentile p xs = fromMaybe 0 $ quantile p (tdigest (fromIntegral <$> xs) :: TDigest 25)
 
 expt' :: Int -> Format r (Scientific -> r)
 expt' x = scifmt Exponent (Just x)
@@ -71,7 +89,7 @@ formatRun :: [Cycle] -> Text -> Text
 formatRun cs label =
     sformat
           ((right 24 ' ' %. stext) % stext %
-           (left 7 ' ' %. expt' 3) % " cycles")
+           (left 9 ' ' %. expt' 3) % " cycles")
           label
           (Text.intercalate " " $ sformat (left 7 ' ' %. expt' 3) <$>
            (\x -> scientific (fromIntegral x) 0) <$> take 5 cs)
