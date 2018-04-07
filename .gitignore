@@ -3,3 +3,4 @@
 /.DS_Store
 /online.cabal
 /other/.DS_Store
+*/.stack-work/

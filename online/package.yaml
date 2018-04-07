@@ -1,5 +1,5 @@
 name: online
-version: '0.2.2.0'
+version: '0.2.3.0'
 synopsis: online statistics
 description: transformation of statistics to online algorithms
 category: statistics
@@ -9,15 +9,12 @@ copyright: Tony Day
 license: BSD3
 github: tonyday567/online
 extra-source-files:
-  - readme.md
   - stack.yaml
 default-extensions:
   - NegativeLiterals
   - NoImplicitPrelude
   - OverloadedStrings
   - UnicodeSyntax
-dependencies:
-  - protolude
 library:
   source-dirs: src
   ghc-options:
@@ -35,36 +32,16 @@ library:
     - base >=4.7 && <5
     - foldl
     - numhask-prelude
+    - protolude
     - tdigest
     - vector
     - vector-algorithms
-executables:
-  online-bench:
-    main: bench.hs
-    source-dirs: bench
-    ghc-options:
-      - -O2
-      - -funbox-strict-fields
-      - -fforce-recomp
-      - -threaded
-      - -rtsopts
-      - -with-rtsopts=-N
-    dependencies:
-      - base >=4.7 && <5
-      - foldl
-      - formatting
-      - numhask-prelude
-      - online
-      - optparse-generic
-      - perf
-      - scientific
-      - tdigest
-      - text
 tests:
   test:
     main: test.hs
     source-dirs: test
     dependencies:
       - base >=4.7 && <5
+      - protolude
       - tasty
       - doctest

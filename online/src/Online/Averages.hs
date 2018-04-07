@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
 -- | online statistics based on a moving average
@@ -27,11 +28,11 @@ newtype Averager a b = Averager
   { _averager :: (a, b)
   }
 
-instance (Semigroup a, Monoid b) => Semigroup (Averager a b) where
+instance (Semigroup a, Semigroup b) => Semigroup (Averager a b) where
   (Averager (s, c)) <> (Averager (s', c')) =
     Averager (s <> s', c <> c')
 
-instance (Monoid a, Monoid b) => Monoid (Averager a b) where
+instance (Semigroup a, Semigroup b, Monoid a, Monoid b) => Monoid (Averager a b) where
   mempty = Averager (mempty, mempty)
   mappend = (<>)
 
@@ -167,5 +168,5 @@ autocorr central corrf =
 {-# INLINABLE autocorr #-}
 
 -- | a constant fold
-mconst :: (Field a) => a -> L.Fold a a
+mconst :: a -> L.Fold a a
 mconst a = L.Fold (\() _ -> ()) () (const a)

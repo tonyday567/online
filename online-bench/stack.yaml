@@ -1,13 +1,11 @@
 resolver: nightly-2018-04-05
 
 packages:
-  - online
-  - online-bench
-  - ../numhask/numhask-prelude
+  - .
 
 extra-deps:
   - numhask-0.2.0.0
-  # - numhask-prelude-0.0.3.0
+  - numhask-prelude-0.0.3.0
   - perf-0.4.0.1
   - tdigest-0.1
 
