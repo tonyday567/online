@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 0e52ec83c8732aad81bae413979e21c904825f1675946b464248c15cb19ae656
+-- hash: d992f7ce58ed3dee016f2bd652c694942ade37ba80430c7d10b20b53573121b3
 
 name:           online
 version:        0.2.3.0
@@ -33,8 +33,10 @@ library
   ghc-options: -Wall -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints
   build-depends:
       base >=4.7 && <5
+    , contravariant
     , foldl
     , numhask-prelude
+    , profunctors
     , protolude
     , tdigest
     , vector
@@ -45,6 +47,7 @@ library
       Online.Medians
       Online.Quantiles
   other-modules:
+      Online.Reversable
       Paths_online
   default-language: Haskell2010
 

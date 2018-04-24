@@ -3,7 +3,7 @@
 
 -- | online statistics based on a moving average
 module Online.Averages
-  ( Averager
+  ( Averager(..)
   , online
     -- * online statistics
   , ma
@@ -26,7 +26,7 @@ import NumHask.Prelude
 -- | Most common statistics are averages.
 newtype Averager a b = Averager
   { _averager :: (a, b)
-  }
+  } deriving (Show)
 
 instance (Semigroup a, Semigroup b) => Semigroup (Averager a b) where
   (Averager (s, c)) <> (Averager (s', c')) =
