@@ -16,7 +16,8 @@ import qualified Control.Foldl as L
 import Data.List.NonEmpty (NonEmpty)
 import Data.TDigest
 import Data.TDigest.Internal
-import Data.TDigest.Postprocess ()
+import Data.TDigest.Tree.Internal (TDigest(..), size, emptyTDigest, insertCentroid, relMaxSize, absMaxSize, toMVector)
+import Data.TDigest.Postprocess (HistBin, histogram)
 import qualified Data.Vector.Algorithms.Heap as VHeap
 import qualified Data.Vector.Unboxed as VU
 import NumHask.Prelude
@@ -86,8 +87,8 @@ onlineInsert x otd = onlineCompress (onlineInsert' x otd)
 onlineCompress :: OnlineTDigest -> OnlineTDigest
 onlineCompress otd@(OnlineTDigest Nil _ _) = otd
 onlineCompress otd@(OnlineTDigest t _ _)
-  | Data.TDigest.Internal.size t > relMaxSize * compression &&
-      Data.TDigest.Internal.size t > absMaxSize = onlineForceCompress otd
+  | Data.TDigest.Tree.Internal.size t > relMaxSize * compression &&
+      Data.TDigest.Tree.Internal.size t > absMaxSize = onlineForceCompress otd
   | otherwise = otd
   where
     compression = 25

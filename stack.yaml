@@ -1,10 +1,11 @@
-resolver: nightly-2018-04-10
+resolver: nightly-2018-06-02
 
 packages:
   - online
   - online-bench
 
 extra-deps:
-  - tdigest-0.1
+  - perf-analysis-0.0.1.1
+  - perf-0.4.1.0
 
-allow-newer: true
+# allow-newer: true

@@ -34,6 +34,7 @@ executables:
       - online
       - optparse-generic
       - perf
+      - perf-analysis
       - protolude
       - scientific
       - tdigest

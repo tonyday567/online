@@ -16,10 +16,10 @@ import NumHask.Prelude hiding ((%), fromIntegral)
 import Protolude (fromIntegral)
 import Perf hiding (zero, Additive)
 import Formatting
-import qualified Data.Text as Text
+-- import qualified Data.Text as Text
 import qualified Control.Foldl as L
 import Data.Scientific
-import Data.TDigest
+import Perf.Analysis
 
 data Opts = Opts
   { runs :: Maybe Int -- <?> "number of runs"
@@ -28,27 +28,13 @@ data Opts = Opts
 
 instance ParseRecord Opts
 
--- | compute deciles
---
--- > c5 <- decile 5 <$> ticks n f a
---
-deciles :: (Functor f, Foldable f) => Int -> f Cycle -> [Double]
-deciles n xs =
-  (\x -> fromMaybe 0 $ quantile x (tdigest (fromIntegral <$> xs) :: TDigest 25)) <$>
-  ((/ fromIntegral n) . fromIntegral <$> [0 .. n]) :: [Double]
 
--- | compute a percentile
---
--- > c <- percentile 0.4 . fst <$> ticks n f a
---
-percentile :: (Functor f, Foldable f) => Double -> f Cycle -> Double
-percentile p xs = fromMaybe 0 $ quantile p (tdigest (fromIntegral <$> xs) :: TDigest 25)
-
-expt' :: Int -> Format r (Scientific -> r)
-expt' x = scifmt Exponent (Just x)
-
-code :: [Text] -> Text
-code cs = "\n```\n" <> Text.intercalate "\n" cs <> "\n```\n"
+-- | format a real float as a Scientific with a label and precision
+formatDouble :: (RealFloat a) => Text -> Int -> a -> Text
+formatDouble label p x =
+        sformat
+          ((right 24 ' ' %. stext) %
+           (left 8 ' ' %. prec p)) label (fromFloatDigits x)
 
 sumInt :: [Int] -> Int -> Int
 sumInt xs n = foldl' (+) zero (take n xs)
@@ -56,7 +42,7 @@ sumInt xs n = foldl' (+) zero (take n xs)
 sumDouble :: [Double] -> Int -> Double
 sumDouble xs n = foldl' (+) zero (take n xs)
 
-sumPoly :: (Enum b, MultiplicativeUnital b, Additive b) => [b] -> Int -> b
+sumPoly :: (Additive b) => [b] -> Int -> b
 sumPoly xs n = foldl' (+) zero (take n xs)
 
 sumSum :: [Double] -> Int -> Double
@@ -85,59 +71,25 @@ av = L.Fold step begin extract
 maTest :: [Double] -> Int -> Double
 maTest xs n = L.fold (ma 0.99) (take n xs)
 
-formatRun :: [Cycle] -> Text -> Text
-formatRun cs label =
-    sformat
-          ((right 24 ' ' %. stext) % stext %
-           (left 9 ' ' %. expt' 3) % " cycles")
-          label
-          (Text.intercalate " " $ sformat (left 7 ' ' %. expt' 3) <$>
-           (\x -> scientific (fromIntegral x) 0) <$> take 5 cs)
-          (fromFloatDigits $ percentile 0.4 cs)
-
-formatRunHeader :: Text
-formatRunHeader =
-        sformat
-          ((right 24 ' ' %. stext) %
-           (left 7 ' ' %. stext) %
-           (left 8 ' ' %. stext) %
-           (left 8 ' ' %. stext) %
-           (left 8 ' ' %. stext) %
-           (left 8 ' ' %. stext) %
-           (left 8 ' ' %. stext))
-          "run"
-          "first"
-          "2nd"
-          "3rd"
-          "4th"
-          "5th"
-          "40th %"
-
-run :: Functor f => Text -> f ([Cycle], b) -> f Text
-run label t = (`formatRun` label) . fst <$> t
-
 tick_Test :: FilePath -> IO ()
 tick_Test f = do
   onetick <- tick_
   ticks' <- replicateM 10 tick_
   manyticks <- replicateM 1000000 tick_
   let avticks = average manyticks
-  let qticks = deciles 10 manyticks
   let tick999 = percentile 0.999 manyticks
   let tick99999 = percentile 0.99999 manyticks
   let tick99 = percentile 0.99 manyticks
   let tick40 = percentile 0.4 manyticks
   writeFile f $
     code
-      [ "one tick_: " <> show onetick <> " cycles"
+      [ "one tick_: " <> show onetick
       , "next 10: " <> show ticks'
-      , "average over 1m: " <> sformat (fixed 2) avticks <> " cycles"
-      , "99.999% perc: " <> sformat commas (floor tick99999 :: Integer)
-      , "99.9% perc: " <> sformat (fixed 2) tick999
-      , "99th perc:  " <> sformat (fixed 2) tick99
-      , "40th perc:  " <> sformat (fixed 2) tick40
-      , "[min, 10th, 20th, .. 90th, max]:"
-      , mconcat (sformat (" " % expt' 4) . fromFloatDigits <$> qticks)
+      , formatDouble "average over 1m: " 2 avticks
+      , formatDouble "99.999% perc: " 2 tick99999
+      , formatDouble "99.9% perc: " 2 tick999
+      , formatDouble "99th perc:  " 2 tick99
+      , formatDouble "40th perc:  " 2 tick40
       ]
 
 fMono :: Int -> Int
@@ -165,22 +117,22 @@ tickTest f a' = do
 ticksTest :: FilePath -> Int -> Int -> IO ()
 ticksTest f a' n = do
   -- | various versions of tick
-  rpure <- run "ticks" $ ticks n fMono a'
-  rpurePoly <- run "ticks (poly)" $ ticks n fPoly a'
-  rpureLambda <- run "ticks (lambda)" $ ticks n fLambda a'
-  rio <- run "ticksIO" $ ticksIO n (pure $ fMono a')
-  rioPoly <- run "ticksIO (poly)" $ ticksIO n (pure $ fPoly a')
-  rioLambda <- run "ticksIO (lambda)" $ ticksIO n (pure $ fLambda a')
+  (rpure, _) <- ticks n fMono a'
+  (rpurePoly, _) <- ticks n fPoly a'
+  (rpureLambda, _) <- ticks n fLambda a'
+  (rio, _) <- ticksIO n (pure $ fMono a')
+  (rioPoly, _) <- ticksIO n (pure $ fPoly a')
+  (rioLambda, _) <- ticksIO n (pure $ fLambda a')
 
   writeFile f $
     code [ "sum to " <> show a' <> " n = " <> show n
          , formatRunHeader
-         , rpure
-         , rpureLambda
-         , rpurePoly
-         , rio
-         , rioLambda
-         , rioPoly
+         , formatRun "ticks" 2 rpure
+         , formatRun "ticks lambda" 2 rpureLambda
+         , formatRun "ticks (poly)" 2 rpurePoly
+         , formatRun "ticks io" 2 rio
+         , formatRun "io lambda" 2 rioLambda
+         , formatRun "io poly" 2 rioPoly
          ]
 
 main :: IO ()
@@ -193,36 +145,35 @@ main = do
   let !xs' = fromIntegral <$> xs :: [Double]
   _ <- warmup 100
 
-  rSumInt' <- run "sumInt [0..]" $ ticks n sumInt' a
-  rSumDouble' <- run "sumDouble [0..]" $ ticks n sumDouble' a'
-  rSumPoly' <- run "sumPoly [0..]" $ ticks n sumPoly' a'
-  rSumInt <- run "sum Int" $ ticks n (sumInt xs) a
-  rSumDouble <- run "sum Double" $ ticks n (sumDouble xs') a
-  rSumPoly <- run "sum Poly" $ ticks n (sumPoly xs') a
-  rSumSum <- run "fold sum" $ ticks n (sumSum xs') a
-  rAvTestMain <- run "fold av" $ ticks n (avTestMain xs') a
-  rMaTest <- run "fold ma" $ ticks n (maTest xs') a
-  rStdTest <- run "fold std" $ ticks n (\x -> L.fold (std 0.99) $ take x xs') a
-
-  rMaL1Test <- run "fold maL1" $ ticks n (\x -> L.fold (maL1 0 0.01 0.99) $ take x xs') a
-  rabsmaL1Test <- run "fold absmaL1" $ ticks n (\x -> L.fold (absmaL1 0 0.01 0.99) $ take x xs') a
+  (rSumInt', _) <- ticks n sumInt' a
+  (rSumDouble', _) <- ticks n sumDouble' a'
+  (rSumPoly', _) <- ticks n sumPoly' a'
+  (rSumInt, _) <- ticks n (sumInt xs) a
+  (rSumDouble, _) <- ticks n (sumDouble xs') a
+  (rSumPoly, _) <- ticks n (sumPoly xs') a
+  (rSumSum, _) <- ticks n (sumSum xs') a
+  (rAvTestMain, _) <- ticks n (avTestMain xs') a
+  (rMaTest, _) <- ticks n (maTest xs') a
+  (rStdTest, _) <- ticks n (\x -> L.fold (std 0.99) $ take x xs') a
+  (rMaL1Test, _) <- ticks n (\x -> L.fold (maL1 0 0.01 0.99) $ take x xs') a
+  (rabsmaL1Test, _) <- ticks n (\x -> L.fold (absmaL1 0 0.01 0.99) $ take x xs') a
 
   writeFile "other/perf.md" $
     code
       [ "sum to " <> sformat commas a
       , formatRunHeader
-      , rSumInt'
-      , rSumDouble'
-      , rSumPoly'
-      , rSumInt
-      , rSumDouble
-      , rSumPoly
-      , rSumSum
-      , rAvTestMain
-      , rMaTest
-      , rStdTest
-      , rMaL1Test
-      , rabsmaL1Test
+      , formatRun "rSumInt'" 2 rSumInt'
+      , formatRun "rSumDouble'" 2 rSumDouble'
+      , formatRun "rSumPoly'" 2 rSumPoly'
+      , formatRun "rSumInt" 2 rSumInt
+      , formatRun "rSumDouble" 2 rSumDouble
+      , formatRun "rSumPoly" 2 rSumPoly
+      , formatRun "rSumSum" 2 rSumSum
+      , formatRun "rAvTestMain" 2 rAvTestMain
+      , formatRun "rMaTest" 2 rMaTest
+      , formatRun "rStdTest" 2 rStdTest
+      , formatRun "rMaL1Test" 2 rMaL1Test
+      , formatRun "rabsmaL1Test" 2 rabsmaL1Test
       ]
 
   tick_Test "other/tick_.md"

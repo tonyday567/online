@@ -54,27 +54,27 @@ deviation using applicative style:
         ma r = online identity (.*r)
         sqma r = online (**2) (.*r)
 
-[perf](https://hackage.haskell.org/package/perf)
-================================================
+performance benchmark
+=====================
 
 1 cycle = 0.4 nanoseconds.
 
     sum to 1,000
-    run                       first     2nd     3rd     4th     5th  40th %
-    sumInt [0..]            6.064e3 1.746e3 1.560e3 1.540e3 1.626e3  1.544e3 cycles
-    sumDouble [0..]         7.835e5 3.032e5 3.104e5 2.837e5 3.051e5  8.957e4 cycles
-    sumPoly [0..]           1.139e5 7.660e4 7.638e4 7.648e4 7.636e4  7.674e4 cycles
-    sum Int                 1.601e4 1.186e4 1.167e4 1.158e4 1.176e4  1.168e4 cycles
-    sum Double              2.756e4 1.189e4 1.158e4 1.163e4 1.158e4  1.159e4 cycles
-    sum Poly                1.170e4 1.172e4 1.163e4 1.166e4 1.158e4  1.164e4 cycles
-    fold sum                1.177e4 1.174e4 1.178e4 1.185e4 1.177e4  1.175e4 cycles
-    fold av                 2.935e4 1.190e4 1.181e4 1.182e4 1.177e4  1.181e4 cycles
-    fold ma                 1.289e4 1.202e4 1.205e4 1.203e4 1.206e4  1.201e4 cycles
-    fold std                2.052e5 1.210e5 7.236e5 1.364e5 1.348e5  1.324e5 cycles
-    fold maL1               8.218e4 1.192e5 1.052e5 2.567e5 1.168e5  7.856e4 cycles
-    fold absmaL1            3.405e5 5.966e4 5.976e4 6.025e4 5.939e4  5.975e4 cycles
+    run                        first      2nd      3rd   median      av.
+    rSumInt'                  9.72e3   1.68e3   1.56e3   1.63e3   1.71e3
+    rSumDouble'               1.41e6   2.94e5   3.04e5   9.19e4   1.84e5
+    rSumPoly'                 9.17e4   9.15e4   9.13e4   7.90e4   1.10e5
+    rSumInt                   1.58e4   1.18e4   1.17e4   1.17e4   1.17e4
+    rSumDouble                2.62e4   1.18e4   1.16e4   1.16e4   1.18e4
+    rSumPoly                  1.17e4   1.17e4   1.16e4   1.16e4   1.16e4
+    rSumSum                   1.16e4   1.16e4   1.17e4   1.16e4   1.16e4
+    rAvTestMain               2.85e4   1.19e4   1.19e4   1.19e4   1.20e4
+    rMaTest                   1.26e4   1.20e4   1.20e4   1.20e4   1.27e4
+    rStdTest                  2.14e5   1.26e5   8.05e5   1.16e5   2.03e5
+    rMaL1Test                 1.73e5   8.30e4   1.14e5   7.61e4   1.21e5
+    rabsmaL1Test              3.34e5   5.89e4   5.93e4   5.93e4   1.06e5
 
 recipe
 ======
 
-    stack build --test --exec "$(stack path --local-install-root)/bin/online-bench" --exec "$(stack path --local-bin)/pandoc -f markdown -i other/header.md other/readme_.md other/footer.md -t html -o index.html --filter pandoc-include --mathjax" --exec "$(stack path --local-bin)/pandoc -f markdown -i other/readme_.md -t markdown -o readme.md --filter pandoc-include --mathjax" --file-watch
+    stack build --test --exec "$(stack path --local-install-root)/bin/online-bench" --exec "$(stack path --local-bin)/pandoc -f markdown -i other/readme_.md -t markdown -o readme.md --filter pandoc-include --mathjax"

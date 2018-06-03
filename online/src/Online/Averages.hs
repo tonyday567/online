@@ -151,7 +151,7 @@ There are thus two online rates needed: one for the average being considered to 
 would estimate the one-step autocorrelation relationship of the previous value and the current value over the entire sample set.
 
 -}
-autocorr :: (BoundedField a) => Fold a a -> Fold (a, a) a -> Fold a a
+autocorr :: (RealFloat a) => Fold a a -> Fold (a, a) a -> Fold a a
 autocorr central corrf =
   case central of
     (Fold mStep mBegin mDone) ->

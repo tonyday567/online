@@ -1,9 +1,8 @@
-resolver: nightly-2018-04-10
+resolver: nightly-2018-06-02
 
 packages:
   - .
 
-extra-deps:
-  - tdigest-0.1
+extra-deps: []
 
-allow-newer: true
+# allow-newer: true
