@@ -2,10 +2,10 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: c31ee3388d36b936f5221f318b9bc79c0054fcd85c38acbdc342c75365bd96a6
+-- hash: 23ad67040f06c24d3eb357c48f10a503d156cb1d8cf9ded5a9f749d497c3f937
 
 name:           online
-version:        0.2.3.0
+version:        0.3.0.0
 synopsis:       online statistics
 description:    transformation of statistics to online algorithms
 category:       statistics
