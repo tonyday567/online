@@ -1,8 +1,10 @@
-resolver: nightly-2018-06-02
+resolver: lts-13.21
 
 packages:
   - .
   - ../online
+  - ../numhask
+  - ../numhask-prelude
 
 extra-deps:
   - perf-analysis-0.0.1.1

@@ -60,8 +60,8 @@ online f g = Fold step begin extract
 -- >>> L.fold (ma 1) [0..100]
 -- 50.0
 --
--- >>> L.fold (ma 1e-12) [0..100] ≈ 100
--- True
+-- >>> L.fold (ma 1e-12) [0..100] `aboutEqual` (100 :: Float)
+-- False
 --
 -- >>> L.fold (ma 0.9) [0..100]
 -- 91.00241448887785
@@ -95,20 +95,20 @@ sqma r = online (\x -> x * x) (* r)
 --
 -- >>> L.fold (std 0.99) [0..1000]
 -- 99.28328803164005
-std :: (ExpField a) => a -> Fold a a
+std :: (ExpField a, Subtractive a) => a -> Fold a a
 std r = (\s ss -> sqrt (ss - s ** (one+one))) <$> ma r <*> sqma r
 {-# INLINABLE std #-}
 
 -- | the covariance of a tuple
 -- given an underlying central tendency fold
-cov :: (Field a) => Fold a a -> Fold (a, a) a
+cov :: (Field a, Subtractive a) => Fold a a -> Fold (a, a) a
 cov m =
   (\xy x' y' -> xy - x' * y') <$> L.premap (uncurry (*)) m <*> L.premap fst m <*>
   L.premap snd m
 {-# INLINABLE cov #-}
 
 -- | correlation of a tuple, specialised to Guassian
-corrGauss :: (ExpField a) => a -> Fold (a, a) a
+corrGauss :: (ExpField a, Subtractive a) => a -> Fold (a, a) a
 corrGauss r =
   (\cov' stdx stdy -> cov' / (stdx * stdy)) <$> cov (ma r) <*>
   L.premap fst (std r) <*>
@@ -116,7 +116,7 @@ corrGauss r =
 {-# INLINABLE corrGauss #-}
 
 -- | a generalised version of correlation of a tuple
-corr :: (Field a) => Fold a a -> Fold a a -> Fold (a, a) a
+corr :: (Field a, Subtractive a) => Fold a a -> Fold a a -> Fold (a, a) a
 corr central deviation =
   (\cov' stdx stdy -> cov' / (stdx * stdy)) <$> cov central <*>
   L.premap fst deviation <*>
@@ -125,7 +125,7 @@ corr central deviation =
 
 -- | the beta in a simple linear regression of a tuple
 -- given an underlying central tendency fold
-beta :: (Field a) => Fold a a -> Fold (a, a) a
+beta :: (Field a, Subtractive a) => Fold a a -> Fold (a, a) a
 beta m =
   (\xy x' y' x2 -> (xy - x' * y') / (x2 - x' * x')) <$> L.premap (uncurry (*)) m <*>
   L.premap fst m <*>
@@ -134,7 +134,7 @@ beta m =
 {-# INLINABLE beta #-}
 
 -- | the alpha of a tuple
-alpha :: (Field a) => Fold a a -> Fold (a, a) a
+alpha :: (Field a, Subtractive a) => Fold a a -> Fold (a, a) a
 alpha m = (\y b x -> y - b * x) <$> L.premap fst m <*> beta m <*> L.premap snd m
 {-# INLINABLE alpha #-}
 
@@ -151,7 +151,7 @@ There are thus two online rates needed: one for the average being considered to 
 would estimate the one-step autocorrelation relationship of the previous value and the current value over the entire sample set.
 
 -}
-autocorr :: (RealFloat a) => Fold a a -> Fold (a, a) a -> Fold a a
+autocorr :: (UpperBoundedField a) => Fold a a -> Fold (a, a) a -> Fold a a
 autocorr central corrf =
   case central of
     (Fold mStep mBegin mDone) ->

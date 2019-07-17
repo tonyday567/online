@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DataKinds #-}
@@ -54,7 +55,7 @@ sumInt' x = foldl' (+) zero [zero .. x]
 sumDouble' :: Double -> Double
 sumDouble' x = foldl' (+) zero [one .. x]
 
-sumPoly' :: (Enum b, MultiplicativeUnital b, Additive b) => b -> b
+sumPoly' :: (Enum b, Multiplicative b, Additive b) => b -> b
 sumPoly' x = foldl' (+) zero [one .. x]
 
 avTestMain :: [Double] -> Int -> Double

@@ -77,7 +77,7 @@ median r = L.Fold step begin done
 onlineInsert' :: Double -> OnlineTDigest -> OnlineTDigest
 onlineInsert' x (OnlineTDigest td' n r) =
   OnlineTDigest
-    (insertCentroid (x, r ^^ (-(fromIntegral $ n + 1))) td')
+    (insertCentroid (x, r ^^ (-(fromIntegral $ n + 1) :: Integer)) td')
     (n + 1)
     r
 
@@ -99,7 +99,7 @@ onlineForceCompress (OnlineTDigest t n r) = OnlineTDigest t' 0 r
   where
     t' =
       NumHask.Prelude.foldl' (flip insertCentroid) emptyTDigest $
-      (\(m, w) -> (m, w * (r ^^ fromIntegral n))) . fst <$> VU.toList centroids
+      (\(m, w) -> (m, w * (r ^^ n))) . fst <$> VU.toList centroids
     -- Centroids are shuffled based on space
     centroids :: VU.Vector (Centroid, Double)
     centroids =
