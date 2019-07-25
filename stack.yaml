@@ -23,7 +23,7 @@ extra-deps:
       - numhask-hedgehog
       - numhask-array
   - git: https://github.com/tonyday567/perf.git
-    commit: cb0d0b77d3cdae3e1c0b5b07e3d7a13f144256ab
+    commit: ca0cdcb584c15ae28017b6d1c3b6530d0c524250
     subdirs:
       - perf
       - perf-analysis
