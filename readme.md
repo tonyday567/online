@@ -57,24 +57,9 @@ deviation using applicative style:
 performance benchmark
 =====================
 
-1 cycle = 0.4 nanoseconds.
-
-    sum to 1,000
-    run                        first      2nd      3rd   median      av.
-    rSumInt'                  9.72e3   1.68e3   1.56e3   1.63e3   1.71e3
-    rSumDouble'               1.41e6   2.94e5   3.04e5   9.19e4   1.84e5
-    rSumPoly'                 9.17e4   9.15e4   9.13e4   7.90e4   1.10e5
-    rSumInt                   1.58e4   1.18e4   1.17e4   1.17e4   1.17e4
-    rSumDouble                2.62e4   1.18e4   1.16e4   1.16e4   1.18e4
-    rSumPoly                  1.17e4   1.17e4   1.16e4   1.16e4   1.16e4
-    rSumSum                   1.16e4   1.16e4   1.17e4   1.16e4   1.16e4
-    rAvTestMain               2.85e4   1.19e4   1.19e4   1.19e4   1.20e4
-    rMaTest                   1.26e4   1.20e4   1.20e4   1.20e4   1.27e4
-    rStdTest                  2.14e5   1.26e5   8.05e5   1.16e5   2.03e5
-    rMaL1Test                 1.73e5   8.30e4   1.14e5   7.61e4   1.21e5
-    rabsmaL1Test              3.34e5   5.89e4   5.93e4   5.93e4   1.06e5
+[bench.md](bench.md)
 
 recipe
 ======
 
-    stack build --test --exec "$(stack path --local-install-root)/bin/online-bench" --exec "$(stack path --local-bin)/pandoc -f markdown -i other/readme_.md -t markdown -o readme.md --filter pandoc-include --mathjax"
+    stack build --test --exec "$(stack path --local-install-root)/bin/online-bench"

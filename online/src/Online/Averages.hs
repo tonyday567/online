@@ -61,7 +61,7 @@ online f g = Fold step begin extract
 -- 50.0
 --
 -- >>> L.fold (ma 1e-12) [0..100] `aboutEqual` (100 :: Float)
--- False
+-- True
 --
 -- >>> L.fold (ma 0.9) [0..100]
 -- 91.00241448887785

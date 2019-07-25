@@ -1,11 +1,4 @@
-cabal-version: 1.12
-
--- This file has been generated from package.yaml by hpack version 0.31.1.
---
--- see: https://github.com/sol/hpack
---
--- hash: 119c6074b7205609e7d679293466668aa29385f0159a0b82477ea62a068af512
-
+cabal-version: 2.0
 name:           online
 version:        0.3.0.0
 synopsis:       online statistics
@@ -30,8 +23,6 @@ library
       Online.Averages
       Online.Medians
       Online.Quantiles
-  other-modules:
-      Paths_online
   hs-source-dirs:
       src
   default-extensions: NegativeLiterals NoImplicitPrelude OverloadedStrings UnicodeSyntax

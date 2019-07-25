@@ -1,10 +1,6 @@
 /.stack-work/
 /src/Online/.DS_Store
 /.DS_Store
-/online.cabal
-/other/.DS_Store
+*/.DS_Store
 */.stack-work/
-/other/perf.md
-/other/tick.md
-/other/tick_.md
-/other/ticks.md
+*/dist-newstyle/

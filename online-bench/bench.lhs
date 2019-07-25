@@ -1,3 +1,5 @@
+\begin{code}
+
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -16,11 +18,9 @@ import Options.Generic
 import NumHask.Prelude hiding ((%), fromIntegral)
 import Protolude (fromIntegral)
 import Perf hiding (zero, Additive)
-import Formatting
--- import qualified Data.Text as Text
 import qualified Control.Foldl as L
-import Data.Scientific
 import Perf.Analysis
+import Readme.Lhs
 
 data Opts = Opts
   { runs :: Maybe Int -- <?> "number of runs"
@@ -28,14 +28,6 @@ data Opts = Opts
   } deriving (Generic, Show)
 
 instance ParseRecord Opts
-
-
--- | format a real float as a Scientific with a label and precision
-formatDouble :: (RealFloat a) => Text -> Int -> a -> Text
-formatDouble label p x =
-        sformat
-          ((right 24 ' ' %. stext) %
-           (left 8 ' ' %. prec p)) label (fromFloatDigits x)
 
 sumInt :: [Int] -> Int -> Int
 sumInt xs n = foldl' (+) zero (take n xs)
@@ -72,27 +64,6 @@ av = L.Fold step begin extract
 maTest :: [Double] -> Int -> Double
 maTest xs n = L.fold (ma 0.99) (take n xs)
 
-tick_Test :: FilePath -> IO ()
-tick_Test f = do
-  onetick <- tick_
-  ticks' <- replicateM 10 tick_
-  manyticks <- replicateM 1000000 tick_
-  let avticks = average manyticks
-  let tick999 = percentile 0.999 manyticks
-  let tick99999 = percentile 0.99999 manyticks
-  let tick99 = percentile 0.99 manyticks
-  let tick40 = percentile 0.4 manyticks
-  writeFile f $
-    code
-      [ "one tick_: " <> show onetick
-      , "next 10: " <> show ticks'
-      , formatDouble "average over 1m: " 2 avticks
-      , formatDouble "99.999% perc: " 2 tick99999
-      , formatDouble "99.9% perc: " 2 tick999
-      , formatDouble "99th perc:  " 2 tick99
-      , formatDouble "40th perc:  " 2 tick40
-      ]
-
 fMono :: Int -> Int
 fMono x = foldl' (+) 0 [1 .. x]
 
@@ -101,40 +72,6 @@ fLambda = \x -> foldl' (+) 0 [1 .. x]
 
 fPoly :: (Enum b, Num b, Additive b) => b -> b
 fPoly x = foldl' (+) 0 [1 .. x]
-
-tickTest :: FilePath -> Int -> IO ()
-tickTest f a' = do
-  (t, resultPrime) <- tick fMono a'
-  print resultPrime
-  (t2,_) <- tick fMono a'
-  writeFile f $
-    code
-      [ "sum to " <> show a'
-      , "first measure: " <> show t <> " cycles"
-      , "second measure: " <> show t2 <> " cycles"
-      ]
-
-
-ticksTest :: FilePath -> Int -> Int -> IO ()
-ticksTest f a' n = do
-  -- | various versions of tick
-  (rpure, _) <- ticks n fMono a'
-  (rpurePoly, _) <- ticks n fPoly a'
-  (rpureLambda, _) <- ticks n fLambda a'
-  (rio, _) <- ticksIO n (pure $ fMono a')
-  (rioPoly, _) <- ticksIO n (pure $ fPoly a')
-  (rioLambda, _) <- ticksIO n (pure $ fLambda a')
-
-  writeFile f $
-    code [ "sum to " <> show a' <> " n = " <> show n
-         , formatRunHeader
-         , formatRun "ticks" 2 rpure
-         , formatRun "ticks lambda" 2 rpureLambda
-         , formatRun "ticks (poly)" 2 rpurePoly
-         , formatRun "ticks io" 2 rio
-         , formatRun "io lambda" 2 rioLambda
-         , formatRun "io poly" 2 rioPoly
-         ]
 
 main :: IO ()
 main = do
@@ -159,25 +96,34 @@ main = do
   (rMaL1Test, _) <- ticks n (\x -> L.fold (maL1 0 0.01 0.99) $ take x xs') a
   (rabsmaL1Test, _) <- ticks n (\x -> L.fold (absmaL1 0 0.01 0.99) $ take x xs') a
 
-  writeFile "other/perf.md" $
-    code
-      [ "sum to " <> sformat commas a
-      , formatRunHeader
-      , formatRun "rSumInt'" 2 rSumInt'
-      , formatRun "rSumDouble'" 2 rSumDouble'
-      , formatRun "rSumPoly'" 2 rSumPoly'
-      , formatRun "rSumInt" 2 rSumInt
-      , formatRun "rSumDouble" 2 rSumDouble
-      , formatRun "rSumPoly" 2 rSumPoly
-      , formatRun "rSumSum" 2 rSumSum
-      , formatRun "rAvTestMain" 2 rAvTestMain
-      , formatRun "rMaTest" 2 rMaTest
-      , formatRun "rStdTest" 2 rStdTest
-      , formatRun "rMaL1Test" 2 rMaL1Test
-      , formatRun "rabsmaL1Test" 2 rabsmaL1Test
-      ]
+  void $ runOutput
+    ("online-bench/bench.lhs", LHS)
+    ("bench.md", GitHubMarkdown) $
 
-  tick_Test "other/tick_.md"
-  tickTest "other/tick.md" a
-  ticksTest "other/ticks.md" a n
+    output "results" $ Native $
+      [ plain ("runs: " <> show n <> " summing to: " <> show a)
+      ] <>
+      [formatRuns 3 2
+       [ ("sumInt'", rSumInt')
+       , ("sumDouble'", rSumDouble')
+       , ("sumPoly'", rSumPoly')
+       , ("sumInt", rSumInt)
+       , ("sumDouble", rSumDouble)
+       , ("sumPoly", rSumPoly)
+      , ("rSumSum", rSumSum)
+      , ("rAvTestMain", rAvTestMain)
+      , ("rMaTest", rMaTest)
+      , ("rStdTest", rStdTest)
+      , ("rMaL1Test", rMaL1Test)
+      , ("rabsmaL1Test", rabsmaL1Test)
+       ]
+      ]
   pure ()
+\end{code}
+
+
+results
+===
+
+```{.output .results}
+```

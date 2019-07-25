@@ -1,11 +1,4 @@
-cabal-version: 1.12
-
--- This file has been generated from package.yaml by hpack version 0.31.1.
---
--- see: https://github.com/sol/hpack
---
--- hash: 186bb9f9fa2b0f402735fdffd72d383b300d3720586a7583b3964a9ca01431d3
-
+cabal-version: 2.0
 name:           online-bench
 version:        0.0.1.0
 synopsis:       online benchmarking
@@ -19,15 +12,13 @@ copyright:      Tony Day
 license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
-extra-source-files:
-    stack.yaml
 
 source-repository head
   type: git
   location: https://github.com/tonyday567/online
 
 executable online-bench
-  main-is: bench.hs
+  main-is: bench.lhs
   hs-source-dirs:
       ./
   default-extensions: NegativeLiterals NoImplicitPrelude OverloadedStrings UnicodeSyntax
@@ -45,6 +36,5 @@ executable online-bench
     , scientific
     , tdigest
     , text
-  other-modules:
-      Paths_online_bench
+    , readme-lhs
   default-language: Haskell2010
