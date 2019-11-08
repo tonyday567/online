@@ -30,8 +30,6 @@ library
   build-depends:
       base >=4.7 && <5
     , foldl
-    , numhask-prelude
-    , protolude
     , tdigest
     , vector
     , vector-algorithms
@@ -48,6 +46,5 @@ test-suite test
   build-depends:
       base >=4.7 && <5
     , doctest
-    , protolude
     , tasty
   default-language: Haskell2010

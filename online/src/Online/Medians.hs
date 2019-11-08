@@ -16,7 +16,7 @@ module Online.Medians
 
 import qualified Control.Foldl as L
 import Control.Foldl (Fold(..))
-import Protolude
+import Prelude
 
 -- | A rough Median.
 -- The average absolute value of the stat is used to callibrate estimate drift towards the median
@@ -69,12 +69,12 @@ onlineL1 i d f g = snd <$> onlineL1' i d f g
 -- 93.92822312742108
 --
 maL1 :: (Ord a, Fractional a) => a -> a -> a -> Fold a a
-maL1 i d r = onlineL1 i d identity (* r)
+maL1 i d r = onlineL1 i d id (* r)
 {-# INLINABLE maL1 #-}
 
 -- | moving absolute deviation
 absmaL1 :: (Ord a, Fractional a) => a -> a -> a -> Fold a a
-absmaL1 i d r = fst <$> onlineL1' i d identity (* r)
+absmaL1 i d r = fst <$> onlineL1' i d id (* r)
 {-# INLINABLE absmaL1 #-}
 
 -- | covariance of a tuple

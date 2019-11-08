@@ -63,3 +63,4 @@ recipe
 ======
 
     stack build --test --exec "$(stack path --local-install-root)/bin/online-bench"
+    

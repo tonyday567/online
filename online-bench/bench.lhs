@@ -15,12 +15,15 @@
 import Online.Averages
 import Online.Medians
 import Options.Generic
-import NumHask.Prelude hiding ((%), fromIntegral)
-import Protolude (fromIntegral)
-import Perf hiding (zero, Additive)
+import Prelude
+import Perf
 import qualified Control.Foldl as L
 import Perf.Analysis
 import Readme.Lhs
+import Data.Foldable
+import Control.Monad (void)
+import Data.Maybe
+import qualified Data.Text as Text
 
 data Opts = Opts
   { runs :: Maybe Int -- <?> "number of runs"
@@ -30,34 +33,34 @@ data Opts = Opts
 instance ParseRecord Opts
 
 sumInt :: [Int] -> Int -> Int
-sumInt xs n = foldl' (+) zero (take n xs)
+sumInt xs n = foldl' (+) 0 (take n xs)
 
 sumDouble :: [Double] -> Int -> Double
-sumDouble xs n = foldl' (+) zero (take n xs)
+sumDouble xs n = foldl' (+) 0 (take n xs)
 
-sumPoly :: (Additive b) => [b] -> Int -> b
-sumPoly xs n = foldl' (+) zero (take n xs)
+sumPoly :: (Num b) => [b] -> Int -> b
+sumPoly xs n = foldl' (+) 0 (take n xs)
 
 sumSum :: [Double] -> Int -> Double
 sumSum xs n = L.fold L.sum (take n xs)
 
 sumInt' :: Int -> Int
-sumInt' x = foldl' (+) zero [zero .. x]
+sumInt' x = foldl' (+) zero [0 .. x]
 
 sumDouble' :: Double -> Double
-sumDouble' x = foldl' (+) zero [one .. x]
+sumDouble' x = foldl' (+) 0 [1 .. x]
 
-sumPoly' :: (Enum b, Multiplicative b, Additive b) => b -> b
-sumPoly' x = foldl' (+) zero [one .. x]
+sumPoly' :: (Enum b, Num b) => b -> b
+sumPoly' x = foldl' (+) 0 [1 .. x]
 
 avTestMain :: [Double] -> Int -> Double
 avTestMain xs n = L.fold Main.av (take n xs)
 
-av :: (Field a) => L.Fold a a
+av :: (Fractional a) => L.Fold a a
 av = L.Fold step begin extract
   where
-    begin = (zero, zero)
-    step (s, c) a = (s + a, c + one)
+    begin = (0,0)
+    step (s, c) a = (s + a, c + 1)
     extract (s, c) = s / c
 {-# INLINABLE av #-}
 
@@ -101,7 +104,7 @@ main = do
     ("bench.md", GitHubMarkdown) $
 
     output "results" $ Native $
-      [ plain ("runs: " <> show n <> " summing to: " <> show a)
+      [ plain (Text.pack $ "runs: " <> show n <> " summing to: " <> show a)
       ] <>
       [formatRuns 3 2
        [ ("sumInt'", rSumInt')
@@ -118,7 +121,6 @@ main = do
       , ("rabsmaL1Test", rabsmaL1Test)
        ]
       ]
-  pure ()
 \end{code}
 
 

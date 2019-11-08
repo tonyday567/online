@@ -26,15 +26,10 @@ executable online-bench
   build-depends:
       base >=4.7 && <5
     , foldl
-    , formatting
-    , numhask-prelude
     , online
     , optparse-generic
     , perf
     , perf-analysis
-    , protolude
-    , scientific
-    , tdigest
     , text
     , readme-lhs
   default-language: Haskell2010

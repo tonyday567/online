@@ -20,7 +20,11 @@ import Data.TDigest.Tree.Internal (TDigest(..), size, emptyTDigest, insertCentro
 import Data.TDigest.Postprocess (HistBin, histogram)
 import qualified Data.Vector.Algorithms.Heap as VHeap
 import qualified Data.Vector.Unboxed as VU
-import NumHask.Prelude
+import Prelude
+import Control.Monad.ST (runST)
+import Data.Maybe
+import Data.Ord
+import Data.Foldable
 
 -- | a raw non-online tdigest fold
 tDigest :: L.Fold Double (TDigest 25)
@@ -28,7 +32,7 @@ tDigest = L.Fold step begin done
   where
     step x a = insert a x
     begin = tdigest ([] :: [Double]) :: TDigest 25
-    done = identity
+    done = id
 
 -- | non-online version
 tDigestQuantiles :: [Double] -> L.Fold Double [Double]
@@ -36,7 +40,7 @@ tDigestQuantiles qs = L.Fold step begin done
   where
     step x a = insert a x
     begin = tdigest ([] :: [Double]) :: TDigest 25
-    done x = fromMaybe nan . (`quantile` compress x) <$> qs
+    done x = fromMaybe (0/0) . (`quantile` compress x) <$> qs
 
 -- | non-online version
 tDigestHist :: L.Fold Double (Maybe (NonEmpty HistBin))
@@ -61,7 +65,7 @@ onlineQuantiles r qs = L.Fold step begin done
   where
     step x a = onlineInsert a x
     begin = emptyOnlineTDigest r
-    done x = fromMaybe nan . (`quantile` t) <$> qs
+    done x = fromMaybe (0/0) . (`quantile` t) <$> qs
       where
         (OnlineTDigest t _ _) = onlineForceCompress x
 
@@ -70,7 +74,7 @@ median r = L.Fold step begin done
   where
     step x a = onlineInsert a x
     begin = emptyOnlineTDigest r
-    done x = fromMaybe nan (quantile 0.5 t)
+    done x = fromMaybe (0/0) (quantile 0.5 t)
       where
         (OnlineTDigest t _ _) = onlineForceCompress x
 
@@ -98,7 +102,7 @@ onlineForceCompress otd@(OnlineTDigest Nil _ _) = otd
 onlineForceCompress (OnlineTDigest t n r) = OnlineTDigest t' 0 r
   where
     t' =
-      NumHask.Prelude.foldl' (flip insertCentroid) emptyTDigest $
+      foldl' (flip insertCentroid) emptyTDigest $
       (\(m, w) -> (m, w * (r ^^ n))) . fst <$> VU.toList centroids
     -- Centroids are shuffled based on space
     centroids :: VU.Vector (Centroid, Double)
@@ -107,17 +111,16 @@ onlineForceCompress (OnlineTDigest t n r) = OnlineTDigest t' 0 r
         v <- toMVector t
         -- sort by cumulative weight
         VHeap.sortBy (comparing snd) v
-        f <- VU.unsafeFreeze v
-        pure f
+        VU.unsafeFreeze v
 
 onlineDigitize :: Double -> [Double] -> L.Fold Double Int
 onlineDigitize r qs = L.Fold step begin done
   where
     step (x, _) a = (onlineInsert a x, a)
-    begin = (emptyOnlineTDigest r, nan)
+    begin = (emptyOnlineTDigest r, 0/0)
     done (x, l) = bucket' qs' l
       where
-        qs' = fromMaybe nan . (`quantile` t) <$> qs
+        qs' = fromMaybe (0/0) . (`quantile` t) <$> qs
         (OnlineTDigest t _ _) = onlineForceCompress x
         bucket' xs l' =
           L.fold L.sum $

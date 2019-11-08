@@ -1,4 +1,4 @@
-resolver: lts-13.29
+resolver: lts-14.13
 
 packages:
   - online
@@ -15,7 +15,7 @@ extra-deps:
   - git: https://github.com/tonyday567/readme-lhs.git
     commit: a48c5414051f9833b84ec5a20108a0b641b21a10
   - git: https://github.com/tonyday567/numhask.git
-    commit: 7d0d7333b63494069f3338530cd8530ad158400f
+    commit: 91df824544709bbec7e5cc7e437897eb551a5a1a
     subdirs:
       - numhask
       - numhask-prelude

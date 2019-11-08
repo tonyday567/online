@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE NoImplicitPrelude #-}
 
 -- | online statistics based on a moving average
 module Online.Averages
@@ -21,7 +20,7 @@ module Online.Averages
 
 import qualified Control.Foldl as L
 import Control.Foldl (Fold(..))
-import NumHask.Prelude
+import Prelude
 
 -- | Most common statistics are averages.
 newtype Averager a b = Averager
@@ -37,11 +36,11 @@ instance (Semigroup a, Semigroup b, Monoid a, Monoid b) => Monoid (Averager a b)
   mappend = (<>)
 
 -- | online takes a function and turns it into a `Control.Foldl.Fold` where the step is an incremental update of the (isomorphic) statistic.
-online :: (Field b) => (a -> b) -> (b -> b) -> Fold a b
+online :: (Fractional b) => (a -> b) -> (b -> b) -> Fold a b
 online f g = Fold step begin extract
   where
-    begin = Averager (zero, zero)
-    step (Averager (s, c)) a = Averager (g $ s + f a, g $ c + one)
+    begin = Averager (0, 0)
+    step (Averager (s, c)) a = Averager (g $ s + f a, g $ c + 1)
     extract (Averager (s, c)) = s / c
 {-# INLINABLE online #-}
 
@@ -66,17 +65,17 @@ online f g = Fold step begin extract
 -- >>> L.fold (ma 0.9) [0..100]
 -- 91.00241448887785
 --
-ma :: (Field a) => a -> Fold a a
-ma r = online identity (* r)
+ma :: (Fractional a) => a -> Fold a a
+ma r = online id (* r)
 {-# INLINABLE ma #-}
 
 -- | absolute average
-absma :: (Field a, Signed a) => a -> Fold a a
+absma :: (Fractional a) => a -> Fold a a
 absma r = online abs (* r)
 {-# INLINABLE absma #-}
 
 -- | average square
-sqma :: (Field a) => a -> Fold a a
+sqma :: (Fractional a) => a -> Fold a a
 sqma r = online (\x -> x * x) (* r)
 {-# INLINABLE sqma #-}
 
@@ -95,20 +94,20 @@ sqma r = online (\x -> x * x) (* r)
 --
 -- >>> L.fold (std 0.99) [0..1000]
 -- 99.28328803164005
-std :: (ExpField a, Subtractive a) => a -> Fold a a
-std r = (\s ss -> sqrt (ss - s ** (one+one))) <$> ma r <*> sqma r
+std :: (Fractional a, Floating a) => a -> Fold a a
+std r = (\s ss -> sqrt (ss - s ** 2)) <$> ma r <*> sqma r
 {-# INLINABLE std #-}
 
 -- | the covariance of a tuple
 -- given an underlying central tendency fold
-cov :: (Field a, Subtractive a) => Fold a a -> Fold (a, a) a
+cov :: (Num a) => Fold a a -> Fold (a, a) a
 cov m =
   (\xy x' y' -> xy - x' * y') <$> L.premap (uncurry (*)) m <*> L.premap fst m <*>
   L.premap snd m
 {-# INLINABLE cov #-}
 
 -- | correlation of a tuple, specialised to Guassian
-corrGauss :: (ExpField a, Subtractive a) => a -> Fold (a, a) a
+corrGauss :: (Floating a) => a -> Fold (a, a) a
 corrGauss r =
   (\cov' stdx stdy -> cov' / (stdx * stdy)) <$> cov (ma r) <*>
   L.premap fst (std r) <*>
@@ -116,7 +115,7 @@ corrGauss r =
 {-# INLINABLE corrGauss #-}
 
 -- | a generalised version of correlation of a tuple
-corr :: (Field a, Subtractive a) => Fold a a -> Fold a a -> Fold (a, a) a
+corr :: (Floating a) => Fold a a -> Fold a a -> Fold (a, a) a
 corr central deviation =
   (\cov' stdx stdy -> cov' / (stdx * stdy)) <$> cov central <*>
   L.premap fst deviation <*>
@@ -125,7 +124,7 @@ corr central deviation =
 
 -- | the beta in a simple linear regression of a tuple
 -- given an underlying central tendency fold
-beta :: (Field a, Subtractive a) => Fold a a -> Fold (a, a) a
+beta :: (Fractional a) => Fold a a -> Fold (a, a) a
 beta m =
   (\xy x' y' x2 -> (xy - x' * y') / (x2 - x' * x')) <$> L.premap (uncurry (*)) m <*>
   L.premap fst m <*>
@@ -134,7 +133,7 @@ beta m =
 {-# INLINABLE beta #-}
 
 -- | the alpha of a tuple
-alpha :: (Field a, Subtractive a) => Fold a a -> Fold (a, a) a
+alpha :: (Fractional a) => Fold a a -> Fold (a, a) a
 alpha m = (\y b x -> y - b * x) <$> L.premap fst m <*> beta m <*> L.premap snd m
 {-# INLINABLE alpha #-}
 
@@ -151,7 +150,7 @@ There are thus two online rates needed: one for the average being considered to 
 would estimate the one-step autocorrelation relationship of the previous value and the current value over the entire sample set.
 
 -}
-autocorr :: (UpperBoundedField a) => Fold a a -> Fold (a, a) a -> Fold a a
+autocorr :: (RealFloat a) => Fold a a -> Fold (a, a) a -> Fold a a
 autocorr central corrf =
   case central of
     (Fold mStep mBegin mDone) ->

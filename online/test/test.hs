@@ -2,7 +2,7 @@
 
 module Main where
 
-import Protolude
+import Prelude
 import Test.Tasty (TestTree, testGroup, defaultMain)
 import Test.DocTest
 

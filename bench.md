@@ -15,12 +15,15 @@
 import Online.Averages
 import Online.Medians
 import Options.Generic
-import NumHask.Prelude hiding ((%), fromIntegral)
-import Protolude (fromIntegral)
-import Perf hiding (zero, Additive)
+import Prelude
+import Perf
 import qualified Control.Foldl as L
 import Perf.Analysis
 import Readme.Lhs
+import Data.Foldable
+import Control.Monad (void)
+import Data.Maybe
+import qualified Data.Text as Text
 
 data Opts = Opts
   { runs :: Maybe Int -- <?> "number of runs"
@@ -30,34 +33,34 @@ data Opts = Opts
 instance ParseRecord Opts
 
 sumInt :: [Int] -> Int -> Int
-sumInt xs n = foldl' (+) zero (take n xs)
+sumInt xs n = foldl' (+) 0 (take n xs)
 
 sumDouble :: [Double] -> Int -> Double
-sumDouble xs n = foldl' (+) zero (take n xs)
+sumDouble xs n = foldl' (+) 0 (take n xs)
 
-sumPoly :: (Additive b) => [b] -> Int -> b
-sumPoly xs n = foldl' (+) zero (take n xs)
+sumPoly :: (Num b) => [b] -> Int -> b
+sumPoly xs n = foldl' (+) 0 (take n xs)
 
 sumSum :: [Double] -> Int -> Double
 sumSum xs n = L.fold L.sum (take n xs)
 
 sumInt' :: Int -> Int
-sumInt' x = foldl' (+) zero [zero .. x]
+sumInt' x = foldl' (+) zero [0 .. x]
 
 sumDouble' :: Double -> Double
-sumDouble' x = foldl' (+) zero [one .. x]
+sumDouble' x = foldl' (+) 0 [1 .. x]
 
-sumPoly' :: (Enum b, Multiplicative b, Additive b) => b -> b
-sumPoly' x = foldl' (+) zero [one .. x]
+sumPoly' :: (Enum b, Num b) => b -> b
+sumPoly' x = foldl' (+) 0 [1 .. x]
 
 avTestMain :: [Double] -> Int -> Double
 avTestMain xs n = L.fold Main.av (take n xs)
 
-av :: (Field a) => L.Fold a a
+av :: (Fractional a) => L.Fold a a
 av = L.Fold step begin extract
   where
-    begin = (zero, zero)
-    step (s, c) a = (s + a, c + one)
+    begin = (0,0)
+    step (s, c) a = (s + a, c + 1)
     extract (s, c) = s / c
 {-# INLINABLE av #-}
 
@@ -101,7 +104,7 @@ main = do
     ("bench.md", GitHubMarkdown) $
 
     output "results" $ Native $
-      [ plain ("runs: " <> show n <> " summing to: " <> show a)
+      [ plain (Text.pack $ "runs: " <> show n <> " summing to: " <> show a)
       ] <>
       [formatRuns 3 2
        [ ("sumInt'", rSumInt')
@@ -118,7 +121,6 @@ main = do
       , ("rabsmaL1Test", rabsmaL1Test)
        ]
       ]
-  pure ()
 ```
 
 results
@@ -128,15 +130,15 @@ runs: 100 summing to: 1000
 
 | run          |   first|  second|   third|  average|  median|
 |:-------------|-------:|-------:|-------:|--------:|-------:|
-| sumInt'      |  2.77e3|  1.61e3|  1.58e3|   1.60e3|  1.60e3|
-| sumDouble'   |  1.38e6|  1.98e5|  1.80e5|   1.65e6|  3.31e4|
-| sumPoly'     |  3.02e4|  2.98e4|  2.97e4|   4.88e4|  2.99e4|
-| sumInt       |  1.68e4|  1.19e4|  1.17e4|   1.18e4|  1.17e4|
-| sumDouble    |  2.62e4|  1.18e4|  1.16e4|   1.17e4|  1.16e4|
-| sumPoly      |  1.17e4|  1.16e4|  1.16e4|   1.16e4|  1.16e4|
-| rSumSum      |  1.16e4|  1.16e4|  1.16e4|   1.16e4|  1.16e4|
-| rAvTestMain  |  1.24e4|  1.18e4|  1.18e4|   1.18e4|  1.18e4|
-| rMaTest      |  1.25e4|  1.20e4|  1.20e4|   1.20e4|  1.20e4|
-| rStdTest     |  2.08e5|  6.18e5|  1.11e5|   1.84e5|  1.11e5|
-| rMaL1Test    |  8.27e4|  7.95e4|  3.30e5|   1.33e5|  7.92e4|
-| rabsmaL1Test |  5.99e4|  5.90e4|  5.88e4|   1.04e5|  5.93e4|
+| sumInt'      |  7.16e3|  2.30e3|  6.06e3|   2.37e3|  2.28e3|
+| sumDouble'   |  7.00e5|  1.83e5|  1.94e5|   8.16e5|  3.49e4|
+| sumPoly'     |  3.12e4|  3.05e4|  3.09e4|   6.84e4|  3.18e4|
+| sumInt       |  1.69e4|  1.18e4|  1.17e4|   1.17e4|  1.17e4|
+| sumDouble    |  2.74e4|  1.18e4|  1.17e4|   1.23e4|  1.22e4|
+| sumPoly      |  1.23e4|  1.23e4|  1.23e4|   1.23e4|  1.22e4|
+| rSumSum      |  1.24e4|  1.23e4|  1.24e4|   1.23e4|  1.22e4|
+| rAvTestMain  |  1.29e4|  1.24e4|  1.24e4|   1.39e4|  1.25e4|
+| rMaTest      |  1.91e4|  1.22e4|  1.23e4|   1.26e4|  1.24e4|
+| rStdTest     |  3.25e5|  9.10e5|  1.49e5|   2.08e5|  1.11e5|
+| rMaL1Test    |  8.24e4|  7.98e4|  3.30e5|   1.31e5|  7.95e4|
+| rabsmaL1Test |  6.00e4|  5.96e4|  7.11e4|   1.32e5|  7.06e4|
