@@ -3,30 +3,9 @@ resolver: lts-14.13
 packages:
   - online
   - online-bench
-  #- ../numhask/numhask
-  #- ../numhask/numhask-prelude
-  #- ../numhask/numhask-space
 
 extra-deps:
-  #- perf-analysis-0.0.1.1
-  #- perf-0.4.1.0
+  - perf-analysis-0.2.0.0
+  - perf-0.5.0.0
   - rdtsc-1.3.0.1
-  # - tdigest-0.2
-  - git: https://github.com/tonyday567/readme-lhs.git
-    commit: a48c5414051f9833b84ec5a20108a0b641b21a10
-  - git: https://github.com/tonyday567/numhask.git
-    commit: 91df824544709bbec7e5cc7e437897eb551a5a1a
-    subdirs:
-      - numhask
-      - numhask-prelude
-      - numhask-space
-      - numhask-hedgehog
-      - numhask-array
-  - git: https://github.com/tonyday567/perf.git
-    commit: ca0cdcb584c15ae28017b6d1c3b6530d0c524250
-    subdirs:
-      - perf
-      - perf-analysis
-      - perf-criterion
-
-# allow-newer: true
+  - readme-lhs-0.2.2

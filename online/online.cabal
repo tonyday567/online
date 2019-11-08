@@ -1,6 +1,6 @@
 cabal-version: 2.0
 name:           online
-version:        0.3.0.0
+version:        0.4.0.0
 synopsis:       online statistics
 description:    transformation of statistics to online algorithms
 category:       statistics
