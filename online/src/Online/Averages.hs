@@ -46,8 +46,6 @@ online f g = Fold step begin extract
 
 -- $setup
 --
--- >>> :set -XNoImplicitPrelude
--- >>> import NumHask.Prelude
 -- >>> import qualified Control.Foldl as L
 -- >>> let n = 100
 -- >>> let r = 0.9
@@ -59,8 +57,8 @@ online f g = Fold step begin extract
 -- >>> L.fold (ma 1) [0..100]
 -- 50.0
 --
--- >>> L.fold (ma 1e-12) [0..100] `aboutEqual` (100 :: Float)
--- True
+-- >>> L.fold (ma 1e-12) [0..100]
+-- 99.999999999999
 --
 -- >>> L.fold (ma 0.9) [0..100]
 -- 91.00241448887785
