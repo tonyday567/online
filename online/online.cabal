@@ -25,7 +25,6 @@ library
       Online.Quantiles
   hs-source-dirs:
       src
-  default-extensions: NegativeLiterals NoImplicitPrelude OverloadedStrings UnicodeSyntax
   ghc-options: -Wall -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints
   build-depends:
       base >=4.7 && <5
@@ -42,7 +41,6 @@ test-suite test
       Paths_online
   hs-source-dirs:
       test
-  default-extensions: NegativeLiterals NoImplicitPrelude OverloadedStrings UnicodeSyntax
   build-depends:
       base >=4.7 && <5
     , doctest

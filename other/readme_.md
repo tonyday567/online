@@ -17,7 +17,7 @@ Imagine a data stream, like an ordered indexed container or a
 time-series of measurements. An exponential moving average can be
 calculated as a repeated iteration over a stream of xs:
 
-$$ ema\_t = ema\_{t-1} \* 0.9 + x\_t \* 0.1 $$
+$$ ema_t = ema_{t-1} * 0.9 + x_t * 0.1 $$
 
 The 0.1 is akin to the learning rate in machine learning, or 0.9 can be
 thought of as a decaying or a rate of forgetting. An exponential moving
@@ -26,8 +26,7 @@ is, on average, about 1/0.1 = 10 x's ago. All very neat.
 
 The first bit of neat is speed. There's 2 times and a plus. The next is
 space: an ema is representing the recent xs in a size as big as a single
-
-x\. Compare that with a simple moving average where you have to keep the
+x. Compare that with a simple moving average where you have to keep the
 history of the last n xs around to keep up (just try it).
 
 It's so neat, it's probably a viable monoidal category all by itself.
@@ -58,24 +57,11 @@ deviation using applicative style:
 performance benchmark
 =====================
 
-runs: 100 summing to: 1000
-
-| run          |   first|  second|   third|  average|  median|
-|:-------------|-------:|-------:|-------:|--------:|-------:|
-| sumInt'      |  6.97e3|  2.37e3|  2.28e3|   2.33e3|  2.28e3|
-| sumDouble'   |  1.11e6|  1.70e5|  1.70e5|   1.63e6|  3.30e4|
-| sumPoly'     |  3.02e4|  2.96e4|  2.97e4|   4.87e4|  2.99e4|
-| sumInt       |  1.66e4|  1.19e4|  1.17e4|   1.18e4|  1.17e4|
-| sumDouble    |  2.58e4|  1.20e4|  1.20e4|   1.22e4|  1.22e4|
-| sumPoly      |  1.23e4|  1.22e4|  1.22e4|   1.19e4|  1.20e4|
-| rSumSum      |  1.23e4|  1.23e4|  1.23e4|   1.22e4|  1.22e4|
-| rAvTestMain  |  1.27e4|  1.23e4|  1.22e4|   1.22e4|  1.22e4|
-| rMaTest      |  1.27e4|  1.23e4|  1.23e4|   1.30e4|  1.23e4|
-| rStdTest     |  1.97e5|  9.66e5|  1.92e5|   1.87e5|  1.10e5|
-| rMaL1Test    |  8.28e4|  7.97e4|  4.26e5|   1.37e5|  7.97e4|
-| rabsmaL1Test |  6.00e4|  5.96e4|  5.95e4|   1.09e5|  5.96e4|
+```{.output .results}
+```
 
 recipe
 ======
 
     stack build --test --exec "$(stack path --local-install-root)/bin/online-bench"
+    

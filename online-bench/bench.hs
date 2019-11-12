@@ -1,5 +1,3 @@
-\begin{code}
-
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -100,8 +98,8 @@ main = do
   (rabsmaL1Test, _) <- ticks n (\x -> L.fold (absmaL1 0 0.01 0.99) $ take x xs') a
 
   void $ runOutput
-    ("online-bench/bench.lhs", LHS)
-    ("bench.md", GitHubMarkdown) $
+    ("other/readme_.md", GitHubMarkdown)
+    ("readme.md", GitHubMarkdown) $
 
     output "results" $ Native $
       [ plain (Text.pack $ "runs: " <> show n <> " summing to: " <> show a)
@@ -121,11 +119,5 @@ main = do
       , ("rabsmaL1Test", rabsmaL1Test)
        ]
       ]
-\end{code}
 
 
-results
-===
-
-```{.output .results}
-```

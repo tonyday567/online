@@ -56,7 +56,6 @@ onlineL1 i d f g = snd <$> onlineL1' i d f g
 
 -- $setup
 --
--- >>> :set -XNoImplicitPrelude
 -- >>> import qualified Control.Foldl as L
 -- >>> let n = 100
 -- >>> let inc = 0.1

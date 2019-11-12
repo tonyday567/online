@@ -18,10 +18,9 @@ source-repository head
   location: https://github.com/tonyday567/online
 
 executable online-bench
-  main-is: bench.lhs
+  main-is: bench.hs
   hs-source-dirs:
       ./
-  default-extensions: NegativeLiterals NoImplicitPrelude OverloadedStrings UnicodeSyntax
   ghc-options: -O2 -funbox-strict-fields -fforce-recomp -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
