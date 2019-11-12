@@ -9,6 +9,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# OPTIONS_GHC -Wall #-}
 {-# OPTIONS_GHC -fno-warn-type-defaults #-}
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
 import Online.Averages
 import Online.Medians
@@ -71,7 +72,7 @@ fMono x = foldl' (+) 0 [1 .. x]
 fLambda :: Int -> Int
 fLambda = \x -> foldl' (+) 0 [1 .. x]
 
-fPoly :: (Enum b, Num b, Additive b) => b -> b
+fPoly :: (Enum b, Num b) => b -> b
 fPoly x = foldl' (+) 0 [1 .. x]
 
 main :: IO ()
