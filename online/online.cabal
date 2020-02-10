@@ -21,6 +21,7 @@ library
   exposed-modules:
       Online
       Online.Averages
+      Online.AveragesB
       Online.Medians
       Online.Quantiles
   hs-source-dirs:
@@ -32,6 +33,7 @@ library
     , tdigest
     , vector
     , vector-algorithms
+    , backprop
   default-language: Haskell2010
 
 test-suite test
