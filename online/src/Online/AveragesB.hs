@@ -5,6 +5,7 @@
 -- | online statistics based on a moving average
 module Online.AveragesB
   ( foldB,
+    foldB',
     maB,
     absmaB,
     sqmaB,
@@ -15,12 +16,11 @@ module Online.AveragesB
 import Prelude
 import Numeric.Backprop as B
 import qualified Prelude.Backprop as PB
-import qualified Control.Foldl as L
 import Control.Foldl (Fold(..))
 
-foldB' :: (Backprop a, Backprop b, Reifies s W, Fractional a, Fractional b) => (BVar s a -> BVar s b) -> BVar s b -> BVar s [a] -> BVar s b
+foldB' :: (Backprop a, Backprop b, Reifies s W, Fractional b) => (BVar s a -> BVar s b) -> BVar s b -> BVar s [a] -> BVar s b
 foldB' f r xs = divide (PB.foldl' (step' f r) (T2 0 0) xs) where
-  step' f r (T2 s c) a = uncurry T2 ((r*) $ s + f a, (r*) $ c + 1)  
+  step' f' r' (T2 s c) a = uncurry T2 ((r'*) $ s + f' a, (r'*) $ c + 1)  
   divide (T2 s c) = s / c
 
 
@@ -37,13 +37,14 @@ ma' r = online id (*r)
 sqma' :: (Reifies s W, Fractional b) => BVar s b -> Fold (BVar s b) (BVar s b)
 sqma' r = online (\x -> x * x) (*r)
 
+std' :: (Reifies s W, Floating b) => BVar s b -> Fold (BVar s b) (BVar s b)
 std' r = (\s ss -> sqrt (ss - s ** 2)) <$> ma' r <*> sqma' r
 
 -- coerceVar
 
 foldB :: (Reifies s W) => (BVar s Double -> BVar s Double) -> BVar s Double -> BVar s [Double] -> BVar s Double
 foldB f r xs = divide (PB.foldl' (step' f r) (T2 0 0) xs) where
-  step' f r (T2 s c) a = uncurry T2 ((r*) $ s + f a, (r*) $ c + 1)  
+  step' f' r' (T2 s c) a = uncurry T2 ((r*) $ s + f' a, (r'*) $ c + 1)  
   divide (T2 s c) = s / c
 
 stdB :: Reifies s W => BVar s Double -> BVar s [Double] -> BVar s Double
